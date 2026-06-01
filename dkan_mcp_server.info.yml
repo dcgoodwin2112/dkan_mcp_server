@@ -1,0 +1,11 @@
+name: 'DKAN MCP Server'
+type: module
+description: 'Exposes DKAN tools through the contrib mcp_server base, with per-tool Drupal-permission access control.'
+package: DKAN
+core_version_requirement: ^10.2 || ^11
+dependencies:
+  - 'mcp_server:mcp_server'
+  - 'dkan:dkan_metastore'
+  - 'dkan:dkan_datastore'
+  - 'dkan:dkan_harvest'
+  - 'dkan_query_tools:dkan_query_tools'

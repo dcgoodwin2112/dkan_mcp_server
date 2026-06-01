@@ -1,0 +1,31 @@
+# Fine-grained per-operation MCP write permissions (reads use mcp_server's own
+# 'access mcp server'). Enforced per-tool by ToolAccessSubscriber on both
+# tools/call (deny) and tools/list (hide).
+'edit datasets via mcp':
+  title: 'Edit DKAN datasets via MCP'
+  description: 'Create or update dataset metadata (update/patch) through MCP tools.'
+  restrict access: true
+'publish datasets via mcp':
+  title: 'Publish DKAN datasets via MCP'
+  description: 'Publish or unpublish (archive) datasets through MCP tools.'
+  restrict access: true
+'delete datasets via mcp':
+  title: 'Delete DKAN datasets via MCP'
+  description: 'Delete datasets, cascade-deleting distributions and datastore tables, through MCP tools.'
+  restrict access: true
+'manage metastore items via mcp':
+  title: 'Manage DKAN metastore items via MCP'
+  description: 'Create or patch arbitrary metastore items (data-dictionary, distribution, etc.) through MCP tools.'
+  restrict access: true
+'import datastore via mcp':
+  title: 'Import DKAN datastore resources via MCP'
+  description: 'Trigger datastore imports for resources through MCP tools.'
+  restrict access: true
+'drop datastore via mcp':
+  title: 'Drop DKAN datastore tables via MCP'
+  description: 'Drop datastore tables for resources through MCP tools.'
+  restrict access: true
+'manage harvests via mcp':
+  title: 'Manage DKAN harvests via MCP'
+  description: 'Register, run, and deregister harvest plans through MCP tools.'
+  restrict access: true

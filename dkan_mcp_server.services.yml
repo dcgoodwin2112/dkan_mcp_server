@@ -1,0 +1,50 @@
+services:
+  dkan_mcp_server.logger_channel:
+    parent: logger.channel_base
+    arguments: ['dkan_mcp_server']
+
+  # DKAN tool-logic services, reused verbatim from the original dkan_mcp module.
+  # Framework-neutral wrappers over DKAN's services; the #[Tool] plugins delegate
+  # to them (reads from dkan_query_tools.* go direct to those shared services).
+  dkan_mcp_server.tools.write:
+    class: Drupal\dkan_mcp_server\Tools\WriteTools
+    arguments:
+      - '@dkan.metastore.service'
+      - '@dkan.datastore.service'
+      - '@dkan_mcp_server.logger_channel'
+
+  dkan_mcp_server.tools.harvest:
+    class: Drupal\dkan_mcp_server\Tools\HarvestTools
+    arguments:
+      - '@dkan.harvest.service'
+      - '@dkan_mcp_server.logger_channel'
+
+  dkan_mcp_server.tools.resource:
+    class: Drupal\dkan_mcp_server\Tools\ResourceTools
+    arguments:
+      - '@dkan.metastore.service'
+      - '@dkan.metastore.resource_mapper'
+      - '@dkan.datastore.service'
+      - '@dkan.common.dataset_info'
+
+  dkan_mcp_server.tools.status:
+    class: Drupal\dkan_mcp_server\Tools\StatusTools
+    arguments:
+      - '@dkan.metastore.service'
+      - '@dkan.common.dataset_info'
+      - '@dkan.harvest.service'
+      - '@module_handler'
+      - '@extension.list.module'
+      - '@queue'
+      - '@plugin.manager.queue_worker'
+
+  # Enforces each tool plugin's self-declared access (checkToolAccess) that
+  # mcp_server core declares but never invokes: denies tools/call and hides
+  # tools from tools/list. Works on both HTTP and STDIO.
+  dkan_mcp_server.tool_access_subscriber:
+    class: Drupal\dkan_mcp_server\EventSubscriber\ToolAccessSubscriber
+    arguments:
+      - '@plugin.manager.mcp_server.tool'
+      - '@current_user'
+    tags:
+      - { name: event_subscriber }
