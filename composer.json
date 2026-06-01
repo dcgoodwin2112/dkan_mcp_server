@@ -1,0 +1,28 @@
+{
+  "name": "dcgoodwin2112/dkan_mcp_server",
+  "description": "Exposes DKAN tools through the contrib mcp_server base, with per-tool Drupal-permission access control.",
+  "type": "drupal-custom-module",
+  "license": "GPL-2.0-or-later",
+  "require": {
+    "php": ">=8.3"
+  },
+  "require-dev": {
+    "drupal/core": "^10.2 || ^11",
+    "phpunit/phpunit": "^10 || ^11"
+  },
+  "autoload": {
+    "psr-4": {
+      "Drupal\\dkan_mcp_server\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Drupal\\Tests\\dkan_mcp_server\\": "tests/src/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "drupal/core-composer-scaffold": false
+    }
+  }
+}

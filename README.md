@@ -13,6 +13,33 @@ transports). This module delegates transport, discovery, and session handling to
 - `drupal/mcp_server` (`2.x-dev`) + `mcp/sdk` (`dev-main`)
 - DKAN `dkan_metastore`, `dkan_datastore`, `dkan_harvest`, and `dkan_query_tools`
 
+## Installation
+
+A `drupal-custom-module` Composer package. Drupal enforces the module
+dependencies above from `dkan_mcp_server.info.yml` at enable time, so they must
+be present first.
+
+**Composer** (not on Packagist — add this repo as a VCS source):
+
+```bash
+composer config repositories.dkan_mcp_server vcs https://github.com/dcgoodwin2112/dkan_mcp_server
+composer require dcgoodwin2112/dkan_mcp_server
+drush en dkan_mcp_server
+```
+
+`composer/installers` places it under `modules/custom/`. The package declares no
+contrib requirements: on a DKAN site `drupal/dkan` and `drupal/mcp_server` (which
+brings `mcp/sdk`) are already installed, and `dkan_query_tools` is a sibling
+custom module added the same way.
+
+**Manual:** clone into `modules/custom/` and enable:
+
+```bash
+git clone https://github.com/dcgoodwin2112/dkan_mcp_server \
+  docroot/modules/custom/dkan_mcp_server
+drush en dkan_mcp_server
+```
+
 ## Transports
 
 - **stdio:** `drush mcp:server` — all enabled tools, gated by the running user's permissions.
