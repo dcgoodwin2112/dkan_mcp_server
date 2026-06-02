@@ -269,9 +269,14 @@ class StatusTools {
     }
     try {
       if (class_exists(InstalledVersions::class)) {
-        $version = InstalledVersions::getPrettyVersion('getdkan/dkan');
-        if ($version) {
-          return $version;
+        // DKAN installs as drupal/dkan; older builds used getdkan/dkan.
+        foreach (['drupal/dkan', 'getdkan/dkan'] as $package) {
+          if (InstalledVersions::isInstalled($package)) {
+            $version = InstalledVersions::getPrettyVersion($package);
+            if ($version) {
+              return $version;
+            }
+          }
         }
       }
     }

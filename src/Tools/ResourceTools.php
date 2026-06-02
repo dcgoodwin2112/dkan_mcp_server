@@ -6,6 +6,7 @@ use Drupal\dkan_common\DatasetInfo;
 use Drupal\dkan_datastore\DatastoreService;
 use Drupal\dkan_metastore\MetastoreService;
 use Drupal\dkan_metastore\ResourceMapper;
+use Drupal\dkan_query_tools\Tool\DatastoreTools;
 
 /**
  * MCP tools for DKAN resource reference introspection.
@@ -22,6 +23,7 @@ class ResourceTools {
     protected ResourceMapper $resourceMapper,
     protected DatastoreService $datastoreService,
     protected DatasetInfo $datasetInfo,
+    protected DatastoreTools $datastoreTools,
   ) {}
 
   /**
@@ -159,17 +161,13 @@ class ResourceTools {
 
   /**
    * Get import status for a resource.
+   *
+   * Delegates to the shared dkan_query_tools status helper so import-status
+   * logic does not diverge between modules. The helper uses DKAN's
+   * authoritative importer state and reports zero-row imports as "done".
    */
   protected function getImportStatus(string $identifier, string $version): string {
-    try {
-      $resourceId = $identifier . '__' . $version;
-      $summary = $this->datastoreService->summary($resourceId);
-      $numOfRows = is_object($summary) ? ($summary->numOfRows ?? 0) : ($summary['numOfRows'] ?? 0);
-      return $numOfRows > 0 ? 'done' : 'pending';
-    }
-    catch (\Throwable) {
-      return 'not_imported';
-    }
+    return $this->datastoreTools->getImportStatus($identifier . '__' . $version)['status'];
   }
 
 }

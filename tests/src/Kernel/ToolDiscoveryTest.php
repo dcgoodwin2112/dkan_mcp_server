@@ -7,6 +7,7 @@ namespace Drupal\Tests\dkan_mcp_server\Kernel;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\mcp_server\Plugin\ToolPluginInterface;
 use Drupal\mcp_server\Plugin\ToolPluginManager;
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
  * Boots a real container and verifies the DKAN tool plugins are wired.
@@ -19,6 +20,7 @@ use Drupal\mcp_server\Plugin\ToolPluginManager;
  *
  * @group dkan_mcp_server
  */
+#[RunTestsInSeparateProcesses]
 class ToolDiscoveryTest extends KernelTestBase {
 
   /**
@@ -52,6 +54,7 @@ class ToolDiscoveryTest extends KernelTestBase {
     'get_import_status', 'search_datasets', 'list_harvest_plans',
     'get_harvest_plan', 'get_harvest_runs', 'get_harvest_run_result',
     'resolve_resource', 'get_site_status', 'get_queue_status',
+    'sample_rows', 'distinct_values',
   ];
 
   /**
@@ -65,13 +68,13 @@ class ToolDiscoveryTest extends KernelTestBase {
   ];
 
   /**
-   * All 36 tools discover, instantiate via DI, and default to enabled.
+   * All 38 tools discover, instantiate via DI, and default to enabled.
    */
   public function testToolsDiscoverInstantiateAndEnabled(): void {
     $definitions = $this->manager()->getDefinitions();
     $expected = array_merge(self::READ_TOOLS, self::WRITE_TOOLS);
-    // Guard the fixture itself: 36 unique ids.
-    $this->assertCount(36, $expected);
+    // Guard the fixture itself: 38 unique ids.
+    $this->assertCount(38, $expected);
     $this->assertSame($expected, array_values(array_unique($expected)));
 
     foreach ($expected as $id) {
@@ -83,14 +86,14 @@ class ToolDiscoveryTest extends KernelTestBase {
   }
 
   /**
-   * The module contributes exactly these 36 tools and no others.
+   * The module contributes exactly these 38 tools and no others.
    */
-  public function testModuleContributesExactlyThirtySix(): void {
+  public function testModuleContributesExactlyThirtyEight(): void {
     $ours = array_filter(
       $this->manager()->getDefinitions(),
       static fn ($definition): bool => $definition->getProvider() === 'dkan_mcp_server',
     );
-    $this->assertCount(36, $ours);
+    $this->assertCount(38, $ours);
     $expected = array_merge(self::READ_TOOLS, self::WRITE_TOOLS);
     sort($expected);
     $actual = array_keys($ours);

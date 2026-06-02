@@ -23,6 +23,31 @@ class WriteTools {
   ) {}
 
   /**
+   * Reject use of the generic metastore tools on the dataset schema.
+   *
+   * The generic metastore tools require only "manage metastore items via mcp".
+   * Datasets have dedicated, fine-grained permissions (edit/delete datasets
+   * via mcp) enforced by their own tools. Allowing schemaId "dataset" here
+   * would let a caller holding only the metastore permission create, patch, or
+   * delete datasets, bypassing that model. Enforced at the service layer so all
+   * callers (current and future) get the same guard.
+   *
+   * @param string $schemaId
+   *   The requested schema ID.
+   *
+   * @return array|null
+   *   A structured error if the schema is "dataset", otherwise NULL.
+   */
+  protected function rejectDatasetSchema(string $schemaId): ?array {
+    if ($schemaId === 'dataset') {
+      return [
+        'error' => 'Dataset items must be managed with the dataset-specific MCP tools: update_dataset (create/replace), patch_dataset (partial update), delete_dataset (delete). These enforce the dedicated dataset permissions.',
+      ];
+    }
+    return NULL;
+  }
+
+  /**
    * Trigger datastore import for a resource.
    *
    * @param string $resourceId
@@ -254,6 +279,9 @@ class WriteTools {
    *   the schema's required fields.
    */
   public function postMetastoreItem(string $schemaId, string $metadata): array {
+    if ($error = $this->rejectDatasetSchema($schemaId)) {
+      return $error;
+    }
     if (!is_object(json_decode($metadata))) {
       $message = json_last_error() !== JSON_ERROR_NONE
         ? 'Invalid JSON: ' . json_last_error_msg()
@@ -301,6 +329,9 @@ class WriteTools {
    *   JSON object string with only the fields to change.
    */
   public function patchMetastoreItem(string $schemaId, string $identifier, string $metadata): array {
+    if ($error = $this->rejectDatasetSchema($schemaId)) {
+      return $error;
+    }
     if (!is_object(json_decode($metadata))) {
       $message = json_last_error() !== JSON_ERROR_NONE
         ? 'Invalid JSON: ' . json_last_error_msg()
@@ -348,6 +379,9 @@ class WriteTools {
    *   Item identifier (UUID).
    */
   public function deleteMetastoreItem(string $schemaId, string $identifier): array {
+    if ($error = $this->rejectDatasetSchema($schemaId)) {
+      return $error;
+    }
     try {
       $this->metastoreService->delete($schemaId, $identifier);
       $this->logger->notice('MCP: Metastore item @schema/@id deleted.', [

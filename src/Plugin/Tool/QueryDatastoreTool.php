@@ -43,11 +43,14 @@ use Mcp\Server\ClientGateway;
         'type' => 'integer',
         'description' => 'Max rows to return (1-500).',
         'default' => 100,
+        'minimum' => 1,
+        'maximum' => 500,
       ],
       'offset' => [
         'type' => 'integer',
         'description' => 'Number of rows to skip.',
         'default' => 0,
+        'minimum' => 0,
       ],
       'expressions' => [
         'type' => 'string',

@@ -24,6 +24,7 @@ spl_autoload_register(static function (string $class) use ($module, $contrib, $c
     'Drupal\\dkan_query_tools\\' => $custom . '/dkan_query_tools/src/',
     'Drupal\\dkan_harvest\\' => $contrib . '/dkan/modules/dkan_harvest/src/',
     'Drupal\\dkan_metastore\\' => $contrib . '/dkan/modules/dkan_metastore/src/',
+    'Drupal\\dkan_datastore\\' => $contrib . '/dkan/modules/dkan_datastore/src/',
   ];
   foreach ($prefixes as $prefix => $baseDir) {
     if (str_starts_with($class, $prefix)) {
