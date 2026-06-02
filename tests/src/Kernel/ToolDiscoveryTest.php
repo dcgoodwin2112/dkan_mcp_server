@@ -38,6 +38,12 @@ class ToolDiscoveryTest extends KernelTestBase {
     'dkan_metastore',
     'dkan_datastore',
     'dkan_harvest',
+    // dkan_metastore_search (+ search_api) provide dkan.metastore_search.service,
+    // which dkan_query_tools.search references via a lazy service closure. The
+    // module must be enabled so the service is defined; the closure means it is
+    // not constructed here (no 'dkan' search index is loaded).
+    'search_api',
+    'dkan_metastore_search',
     'dkan_query_tools',
     'mcp_server',
     'dkan_mcp_server',
