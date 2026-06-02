@@ -47,7 +47,7 @@ drush en dkan_mcp_server
 
 ## Tools
 
-35 tools (23 read, 12 write). Reads delegate to the shared `dkan_query_tools`
+36 tools (23 read, 13 write). Reads delegate to the shared `dkan_query_tools`
 services (metastore/datastore/search); harvest, resource, status, and write
 tools delegate to local logic services in `src/Tools/`. One `#[Tool]` plugin per
 tool lives in `src/Plugin/Tool/`, each extending a per-service base class
@@ -64,7 +64,7 @@ permissions, enforced per-tool by `ToolAccessSubscriber` on **both** `tools/call
 | `edit datasets via mcp` | `update_dataset`, `patch_dataset` |
 | `publish datasets via mcp` | `publish_dataset`, `unpublish_dataset` |
 | `delete datasets via mcp` | `delete_dataset` |
-| `manage metastore items via mcp` | `post_metastore_item`, `patch_metastore_item` |
+| `manage metastore items via mcp` | `post_metastore_item`, `patch_metastore_item`, `delete_metastore_item` |
 | `import datastore via mcp` | `import_resource` |
 | `drop datastore via mcp` | `drop_datastore` |
 | `manage harvests via mcp` | `register_harvest`, `run_harvest`, `deregister_harvest` |

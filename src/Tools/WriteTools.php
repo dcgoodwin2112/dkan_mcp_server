@@ -336,6 +336,50 @@ class WriteTools {
   }
 
   /**
+   * Delete any metastore item by schema and identifier.
+   *
+   * Low-level delete: DKAN does not reference-check, so removing an item that
+   * is still linked elsewhere (e.g. a data-dictionary referenced by a
+   * distribution's describedBy) orphans those references. Verify usage first.
+   *
+   * @param string $schemaId
+   *   Metastore schema ID (e.g. data-dictionary, distribution, theme, keyword).
+   * @param string $identifier
+   *   Item identifier (UUID).
+   */
+  public function deleteMetastoreItem(string $schemaId, string $identifier): array {
+    try {
+      $this->metastoreService->delete($schemaId, $identifier);
+      $this->logger->notice('MCP: Metastore item @schema/@id deleted.', [
+        '@schema' => $schemaId,
+        '@id' => $identifier,
+      ]);
+      return [
+        'status' => 'success',
+        'schema_id' => $schemaId,
+        'identifier' => $identifier,
+        'message' => "Deleted {$schemaId} item {$identifier}.",
+      ];
+    }
+    catch (MissingObjectException $e) {
+      return [
+        'status' => 'not_found',
+        'schema_id' => $schemaId,
+        'identifier' => $identifier,
+        'message' => "{$schemaId} item '{$identifier}' not found.",
+      ];
+    }
+    catch (\Throwable $e) {
+      $this->logger->error('MCP: Failed to delete @schema/@id: @error', [
+        '@schema' => $schemaId,
+        '@id' => $identifier,
+        '@error' => $e->getMessage(),
+      ]);
+      return ['error' => $e->getMessage()];
+    }
+  }
+
+  /**
    * Drop a datastore table for a resource.
    *
    * @param string $resourceId

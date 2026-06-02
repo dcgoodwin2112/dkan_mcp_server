@@ -48,3 +48,10 @@ services:
       - '@current_user'
     tags:
       - { name: event_subscriber }
+
+  # Adds basic_auth to the mcp_server.handle route so headless MCP clients can
+  # authenticate per request with an Authorization header.
+  dkan_mcp_server.route_subscriber:
+    class: Drupal\dkan_mcp_server\Routing\RouteSubscriber
+    tags:
+      - { name: event_subscriber }

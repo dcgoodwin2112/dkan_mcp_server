@@ -8,6 +8,7 @@ use Drupal\Core\Cache\Context\CacheContextsManager;
 use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\dkan_mcp_server\Plugin\Tool\DeleteDatasetTool;
+use Drupal\dkan_mcp_server\Plugin\Tool\DeleteMetastoreItemTool;
 use Drupal\dkan_mcp_server\Plugin\Tool\DeregisterHarvestTool;
 use Drupal\dkan_mcp_server\Plugin\Tool\DropDatastoreTool;
 use Drupal\dkan_mcp_server\Plugin\Tool\GetDatasetTool;
@@ -72,6 +73,7 @@ final class WriteToolPermissionTest extends TestCase {
       'unpublish_dataset' => [UnpublishDatasetTool::class, 'publish datasets via mcp'],
       'post_metastore_item' => [PostMetastoreItemTool::class, 'manage metastore items via mcp'],
       'patch_metastore_item' => [PatchMetastoreItemTool::class, 'manage metastore items via mcp'],
+      'delete_metastore_item' => [DeleteMetastoreItemTool::class, 'manage metastore items via mcp'],
       'drop_datastore' => [DropDatastoreTool::class, 'drop datastore via mcp'],
       'register_harvest' => [RegisterHarvestTool::class, 'manage harvests via mcp'],
       'run_harvest' => [RunHarvestTool::class, 'manage harvests via mcp'],
