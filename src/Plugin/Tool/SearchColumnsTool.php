@@ -32,6 +32,8 @@ use Mcp\Server\ClientGateway;
         'type' => 'integer',
         'description' => 'Maximum matches to return.',
         'default' => 100,
+        'minimum' => 1,
+        'maximum' => 500,
       ],
     ],
     'required' => ['searchTerm'],

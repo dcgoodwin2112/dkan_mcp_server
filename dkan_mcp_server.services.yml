@@ -26,6 +26,7 @@ services:
       - '@dkan.metastore.resource_mapper'
       - '@dkan.datastore.service'
       - '@dkan.common.dataset_info'
+      - '@dkan_query_tools.datastore'
 
   dkan_mcp_server.tools.status:
     class: Drupal\dkan_mcp_server\Tools\StatusTools

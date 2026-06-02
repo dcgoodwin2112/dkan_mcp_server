@@ -47,7 +47,7 @@ drush en dkan_mcp_server
 
 ## Tools
 
-36 tools (23 read, 13 write). Reads delegate to the shared `dkan_query_tools`
+38 tools (25 read, 13 write). Reads delegate to the shared `dkan_query_tools`
 services (metastore/datastore/search); harvest, resource, status, and write
 tools delegate to local logic services in `src/Tools/`. One `#[Tool]` plugin per
 tool lives in `src/Plugin/Tool/`, each extending a per-service base class
@@ -97,7 +97,7 @@ ddev exec bash -c 'cd docroot && SIMPLETEST_DB="mysql://db:db@${DDEV_PROJECT}-db
   modules/custom/dkan_mcp_server/tests/src/Kernel/ToolDiscoveryTest.php'
 ```
 
-- `ToolDiscoveryTest` — all 35 tools discover, instantiate via DI, and default to
-  enabled; the anonymous access matrix (23 reads open, 12 writes denied) resolves
+- `ToolDiscoveryTest` — all 38 tools discover, instantiate via DI, and default to
+  enabled; the anonymous access matrix (25 reads open, 13 writes denied) resolves
   through the real plugins. Boot-time DKAN/core deprecation notices are
   pre-existing and do not fail the run.
