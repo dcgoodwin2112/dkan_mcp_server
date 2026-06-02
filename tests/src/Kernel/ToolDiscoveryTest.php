@@ -60,18 +60,18 @@ class ToolDiscoveryTest extends KernelTestBase {
   private const WRITE_TOOLS = [
     'import_resource', 'update_dataset', 'patch_dataset', 'delete_dataset',
     'publish_dataset', 'unpublish_dataset', 'post_metastore_item',
-    'patch_metastore_item', 'drop_datastore', 'register_harvest',
-    'run_harvest', 'deregister_harvest',
+    'patch_metastore_item', 'delete_metastore_item', 'drop_datastore',
+    'register_harvest', 'run_harvest', 'deregister_harvest',
   ];
 
   /**
-   * All 35 tools discover, instantiate via DI, and default to enabled.
+   * All 36 tools discover, instantiate via DI, and default to enabled.
    */
   public function testToolsDiscoverInstantiateAndEnabled(): void {
     $definitions = $this->manager()->getDefinitions();
     $expected = array_merge(self::READ_TOOLS, self::WRITE_TOOLS);
-    // Guard the fixture itself: 35 unique ids.
-    $this->assertCount(35, $expected);
+    // Guard the fixture itself: 36 unique ids.
+    $this->assertCount(36, $expected);
     $this->assertSame($expected, array_values(array_unique($expected)));
 
     foreach ($expected as $id) {
@@ -83,14 +83,14 @@ class ToolDiscoveryTest extends KernelTestBase {
   }
 
   /**
-   * The module contributes exactly these 35 tools and no others.
+   * The module contributes exactly these 36 tools and no others.
    */
-  public function testModuleContributesExactlyThirtyFive(): void {
+  public function testModuleContributesExactlyThirtySix(): void {
     $ours = array_filter(
       $this->manager()->getDefinitions(),
       static fn ($definition): bool => $definition->getProvider() === 'dkan_mcp_server',
     );
-    $this->assertCount(35, $ours);
+    $this->assertCount(36, $ours);
     $expected = array_merge(self::READ_TOOLS, self::WRITE_TOOLS);
     sort($expected);
     $actual = array_keys($ours);
