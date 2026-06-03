@@ -12,6 +12,8 @@ transports). This module delegates transport, discovery, and session handling to
 
 - `drupal/mcp_server` (`2.x-dev`) + `mcp/sdk` (`dev-main`)
 - DKAN `dkan_metastore`, `dkan_datastore`, `dkan_harvest`, and `dkan_query_tools`
+- OAuth HTTP clients also require `drupal/simple_oauth:^6`,
+  `e0ipso/simple_oauth_21:^1`, and the optional `mcp_server_oauth` submodule.
 
 ## Installation
 
@@ -44,6 +46,9 @@ drush en dkan_mcp_server
 
 - **stdio:** `drush mcp:server` — all enabled tools, gated by the running user's permissions.
 - **HTTP:** `POST /mcp` — requires the `access mcp server` permission (from `mcp_server`).
+  The path defaults to `/mcp` and is configurable via the `mcp_server.base_path` service
+  parameter. Authenticate with OAuth2 Bearer tokens (default) or, for local/demo use, HTTP
+  Basic auth — see [OAuth](#oauth) below.
 
 ## Tools
 
@@ -72,7 +77,61 @@ permissions, enforced per-tool by `ToolAccessSubscriber` on **both** `tools/call
 `mcp_server` core declares per-tool access (`ToolPluginInterface::checkToolAccess()`)
 but never invokes it; `ToolAccessSubscriber` activates that contract via the SDK's
 `RequestEvent`/`ResponseEvent`. The upstream contribution to move this into core is
-tracked in `dkan_mcp/docs/contrib-mcp-server-contributions.md`.
+tracked in [`docs/contrib-mcp-server-contributions.md`](docs/contrib-mcp-server-contributions.md).
+
+## OAuth
+
+OAuth is an opt-in HTTP transport path. The module package declares the
+`simple_oauth` and `simple_oauth_21` Composer dependencies, but
+`dkan_mcp_server` does not hard-depend on the OAuth submodule at Drupal enable
+time so stdio and Basic Auth installs remain lightweight.
+
+Enable the OAuth path after the dependencies are installed:
+
+```bash
+drush en mcp_server_oauth simple_oauth_server_metadata simple_oauth_client_registration
+drush cr
+```
+
+The `mcp_server_oauth` route subscriber adds `oauth2` to the inherited
+`mcp_server.handle` route. This module contributes `ResourceMetadataSubscriber`,
+which advertises the scopes `dkan_mcp:read` and `dkan_mcp:write` in RFC 9728
+protected resource metadata, and ships their backing `oauth2_scope` entities as
+opt-in `config/optional/` — created automatically once `simple_oauth` is enabled:
+
+| Scope | Granularity | Grants |
+|---|---|---|
+| `dkan_mcp:read` | permission | `access mcp server` |
+| `dkan_mcp:write` | role | `dkan_mcp_write` role (every `* via mcp` write permission + `access mcp server`) |
+
+Assign the matching scope(s) to each consumer, and ensure the token's user holds
+the same permissions — authorization still flows through `ToolAccessSubscriber`,
+so the effective Drupal permissions of the resolved account gate every tool.
+
+### HTTP auth posture (`http_basic_auth`)
+
+The production default is **OAuth-only** (`cookie` + `oauth2`):
+`dkan_mcp_server.settings:http_basic_auth` is `false`, so an unauthenticated
+request gets a proper `WWW-Authenticate: Bearer resource_metadata="…"` challenge
+(RFC 9728) and clients discover the flow via
+`/.well-known/oauth-protected-resource`. Basic auth is off by default because its
+`Basic` challenge would otherwise shadow OAuth discovery.
+
+For local/demo use — the bundled `.mcp.json` authenticates with a static
+`Authorization: Basic` header — enable Basic auth on the route:
+
+```bash
+drush cset dkan_mcp_server.settings http_basic_auth true -y && drush cr
+```
+
+Toggling the flag re-runs the route subscriber, so it requires a router rebuild
+(`drush cr`). Basic and OAuth can be enabled together; in that mode the `Basic`
+challenge takes precedence on credential-less requests.
+
+**Upgrading from a pre-OAuth build:** Basic auth used to be always on; it is now
+opt-in (default off). `dkan_mcp_server_update_10001` creates the setting at the
+secure default for installs that predate the flag, so run the `drush cset … true`
+above (then `drush cr`) to restore Basic auth if your clients rely on it.
 
 ## Testing
 

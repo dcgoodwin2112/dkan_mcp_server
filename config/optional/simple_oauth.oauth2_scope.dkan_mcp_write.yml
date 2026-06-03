@@ -1,0 +1,21 @@
+langcode: en
+status: true
+dependencies:
+  config:
+    - user.role.dkan_mcp_write
+  module:
+    - simple_oauth
+id: dkan_mcp_write
+name: 'dkan_mcp:write'
+description: 'Call DKAN MCP write, import, and harvest tools.'
+grant_types:
+  authorization_code:
+    status: true
+    description: 'DKAN MCP write access via authorization code.'
+  client_credentials:
+    status: true
+    description: 'DKAN MCP write access via client credentials.'
+umbrella: false
+granularity_id: role
+granularity_configuration:
+  role: dkan_mcp_write

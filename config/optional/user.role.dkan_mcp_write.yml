@@ -1,0 +1,20 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - dkan_mcp_server
+    - mcp_server
+    - simple_oauth
+id: dkan_mcp_write
+label: 'DKAN MCP write (OAuth)'
+weight: 100
+is_admin: false
+permissions:
+  - 'access mcp server'
+  - 'delete datasets via mcp'
+  - 'drop datastore via mcp'
+  - 'edit datasets via mcp'
+  - 'import datastore via mcp'
+  - 'manage harvests via mcp'
+  - 'manage metastore items via mcp'
+  - 'publish datasets via mcp'

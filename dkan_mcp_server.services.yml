@@ -50,9 +50,32 @@ services:
     tags:
       - { name: event_subscriber }
 
-  # Adds basic_auth to the mcp_server.handle route so headless MCP clients can
-  # authenticate per request with an Authorization header.
+  # Advertises DKAN MCP OAuth scopes in RFC 9728 protected resource metadata.
+  # It self-disables when simple_oauth_21 is not installed.
+  dkan_mcp_server.resource_metadata_subscriber:
+    class: Drupal\dkan_mcp_server\EventSubscriber\ResourceMetadataSubscriber
+    arguments:
+      - '@entity_type.manager'
+    tags:
+      - { name: event_subscriber }
+
+  # Optionally adds basic_auth to the mcp_server.handle route (gated by the
+  # dkan_mcp_server.settings:http_basic_auth flag, default off).
   dkan_mcp_server.route_subscriber:
     class: Drupal\dkan_mcp_server\Routing\RouteSubscriber
+    arguments:
+      - '@config.factory'
+    tags:
+      - { name: event_subscriber }
+
+  # Emits an RFC 9728 Bearer/resource_metadata challenge on anonymous MCP
+  # 401/403 responses (OAuth-only mode) so clients can discover the OAuth flow.
+  dkan_mcp_server.unauthorized_challenge_subscriber:
+    class: Drupal\dkan_mcp_server\EventSubscriber\UnauthorizedChallengeSubscriber
+    arguments:
+      - '@config.factory'
+      - '@current_user'
+      - '@module_handler'
+      - '@url_generator'
     tags:
       - { name: event_subscriber }
