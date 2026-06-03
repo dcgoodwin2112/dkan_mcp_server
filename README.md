@@ -10,10 +10,14 @@ transports). This module delegates transport, discovery, and session handling to
 
 ## Requirements
 
-- `drupal/mcp_server` (`2.x-dev`) + `mcp/sdk` (`dev-main`)
+- `drupal/mcp_server` (`2.x-dev`, which brings `mcp/sdk` `dev-main`) and
+  `drupal/dkan` (`4.x-dev`) — both declared in the package `require`.
 - DKAN `dkan_metastore`, `dkan_datastore`, `dkan_harvest`, and `dkan_query_tools`
-- OAuth HTTP clients also require `drupal/simple_oauth:^6`,
-  `e0ipso/simple_oauth_21:^1`, and the optional `mcp_server_oauth` submodule.
+  (the last ships bundled — see [Bundled `dkan_query_tools`](#bundled-dkan_query_tools)).
+- OAuth HTTP clients also need `drupal/simple_oauth:^6` and
+  `e0ipso/simple_oauth_21:^1` plus the optional `mcp_server_oauth` submodule.
+  These are in Composer `suggest` (not `require`) — install them only for the
+  OAuth path (see [OAuth](#oauth)).
 
 ## Installation
 
@@ -29,10 +33,10 @@ composer require dcgoodwin2112/dkan_mcp_server
 drush en dkan_mcp_server
 ```
 
-`composer/installers` places it under `modules/custom/`. The package declares no
-contrib requirements: on a DKAN site `drupal/dkan` and `drupal/mcp_server` (which
-brings `mcp/sdk`) are already installed, and `dkan_query_tools` is a sibling
-custom module added the same way.
+`composer/installers` places it under `modules/custom/`. The package `require`s
+`drupal/dkan` and `drupal/mcp_server` (which brings `mcp/sdk`); on a DKAN site
+these are already present. `dkan_query_tools` ships **inside** this package as a
+submodule — no separate install.
 
 **Manual:** clone into `modules/custom/` and enable:
 
@@ -41,6 +45,17 @@ git clone https://github.com/dcgoodwin2112/dkan_mcp_server \
   docroot/modules/custom/dkan_mcp_server
 drush en dkan_mcp_server
 ```
+
+### Bundled `dkan_query_tools`
+
+The shared catalog/datastore/search query library lives at
+`modules/dkan_query_tools/` within this package and is its own
+independently-enable-able Drupal module (own machine name, `Drupal\dkan_query_tools\`
+namespace, and `dkan_query_tools.*` service IDs). It does **not** depend on its
+parent, so `drush en dkan_query_tools` enables the library alone without pulling
+in the MCP server. `drush en dkan_mcp_server` pulls it in as a declared
+dependency. Other consumers (e.g. `dkan_drupal_ai_query`) require this package to
+get the library; see their READMEs for the downstream `repositories` snippet.
 
 ## Transports
 
@@ -81,14 +96,16 @@ tracked in [`docs/contrib-mcp-server-contributions.md`](docs/contrib-mcp-server-
 
 ## OAuth
 
-OAuth is an opt-in HTTP transport path. The module package declares the
-`simple_oauth` and `simple_oauth_21` Composer dependencies, but
-`dkan_mcp_server` does not hard-depend on the OAuth submodule at Drupal enable
-time so stdio and Basic Auth installs remain lightweight.
+OAuth is an opt-in HTTP transport path. The `simple_oauth` / `simple_oauth_21`
+packages are in Composer `suggest`, not `require`, and `dkan_mcp_server` does not
+hard-depend on the OAuth submodule at Drupal enable time — so stdio and Basic
+Auth installs stay lightweight and AI-query-only sites that pull this package
+transitively don't drag in the OAuth stack.
 
-Enable the OAuth path after the dependencies are installed:
+Install the OAuth packages, then enable the path:
 
 ```bash
+composer require drupal/simple_oauth:^6 e0ipso/simple_oauth_21:^1
 drush en mcp_server_oauth simple_oauth_server_metadata simple_oauth_client_registration
 drush cr
 ```
@@ -146,6 +163,12 @@ ddev exec "cd docroot/modules/custom/dkan_mcp_server && ../../../../vendor/bin/p
 - `WriteToolPermissionTest` — each write tool gates on exactly its one declared
   permission; reads stay open; every required permission exists in
   `permissions.yml`.
+
+**Bundled `dkan_query_tools`** — standalone unit suite (stubs, no Drupal kernel):
+
+```bash
+ddev exec "cd docroot/modules/custom/dkan_mcp_server/modules/dkan_query_tools && ../../../../../../vendor/bin/phpunit"
+```
 
 **Kernel** (`tests/src/Kernel`) — boots a real container with DKAN + `mcp_server`
 under core's PHPUnit (needs the DDEV test DB):
