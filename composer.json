@@ -1,16 +1,27 @@
 {
   "name": "dcgoodwin2112/dkan_mcp_server",
-  "description": "Exposes DKAN tools through the contrib mcp_server base, with per-tool Drupal-permission access control.",
+  "description": "Exposes DKAN tools through the contrib mcp_server base, with per-tool Drupal-permission access control. Bundles the shared dkan_query_tools library as a submodule.",
   "type": "drupal-custom-module",
   "license": "GPL-2.0-or-later",
   "require": {
     "php": ">=8.3",
-    "drupal/simple_oauth": "^6",
-    "e0ipso/simple_oauth_21": "^1"
+    "drupal/dkan": "4.x-dev",
+    "drupal/mcp_server": "2.x-dev"
   },
   "require-dev": {
     "drupal/core": "^10.2 || ^11",
-    "phpunit/phpunit": "^10 || ^11"
+    "phpunit/phpunit": "^10 || ^11",
+    "getdkan/mock-chain": "^1"
+  },
+  "suggest": {
+    "drupal/simple_oauth": "OAuth 2.1 bearer-token auth for the MCP HTTP endpoint (^6). Without it the endpoint relies on basic_auth, which the install hook disables by default.",
+    "e0ipso/simple_oauth_21": "OAuth 2.1 conformance + RFC 9728 protected-resource metadata (^1). Pairs with drupal/simple_oauth."
+  },
+  "repositories": {
+    "drupal": {
+      "type": "composer",
+      "url": "https://packages.drupal.org/8"
+    }
   },
   "autoload": {
     "psr-4": {
