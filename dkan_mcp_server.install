@@ -1,0 +1,26 @@
+<?php
+
+/**
+ * @file
+ * Install and update hooks for dkan_mcp_server.
+ */
+
+/**
+ * Ensure dkan_mcp_server.settings exists with the OAuth-only auth posture.
+ *
+ * The http_basic_auth flag was added after initial release. Installs enabled
+ * before it have no settings object after a code deploy, so basic_auth (which
+ * the route subscriber previously appended unconditionally) silently drops on
+ * the next router rebuild. Create the config at its secure default
+ * (FALSE = production OAuth-only). This is an intentional posture change; a
+ * site that uses the bundled Basic-auth .mcp.json demo must opt back in:
+ * @code
+ *   drush cset dkan_mcp_server.settings http_basic_auth true -y && drush cr
+ * @endcode
+ */
+function dkan_mcp_server_update_10001() {
+  $config = \Drupal::configFactory()->getEditable('dkan_mcp_server.settings');
+  if ($config->get('http_basic_auth') === NULL) {
+    $config->set('http_basic_auth', FALSE)->save();
+  }
+}

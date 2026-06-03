@@ -1,0 +1,7 @@
+# Whether to append HTTP Basic auth to the MCP endpoint route.
+#
+# Default FALSE = production OAuth posture (cookie + oauth2 only): no Basic
+# challenge to shadow OAuth discovery. Set TRUE for local/demo use so MCP
+# clients can authenticate with a static Authorization: Basic header (e.g. the
+# bundled .mcp.json demo). Changing this requires a router rebuild (drush cr).
+http_basic_auth: false

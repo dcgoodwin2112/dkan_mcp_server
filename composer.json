@@ -4,7 +4,9 @@
   "type": "drupal-custom-module",
   "license": "GPL-2.0-or-later",
   "require": {
-    "php": ">=8.3"
+    "php": ">=8.3",
+    "drupal/simple_oauth": "^6",
+    "e0ipso/simple_oauth_21": "^1"
   },
   "require-dev": {
     "drupal/core": "^10.2 || ^11",

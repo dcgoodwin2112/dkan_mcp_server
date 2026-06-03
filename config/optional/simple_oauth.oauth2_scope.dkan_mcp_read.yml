@@ -1,0 +1,20 @@
+langcode: en
+status: true
+dependencies:
+  module:
+    - mcp_server
+    - simple_oauth
+id: dkan_mcp_read
+name: 'dkan_mcp:read'
+description: 'Call read-only DKAN MCP tools.'
+grant_types:
+  authorization_code:
+    status: true
+    description: 'Read-only DKAN MCP access via authorization code.'
+  client_credentials:
+    status: true
+    description: 'Read-only DKAN MCP access via client credentials.'
+umbrella: false
+granularity_id: permission
+granularity_configuration:
+  permission: 'access mcp server'
