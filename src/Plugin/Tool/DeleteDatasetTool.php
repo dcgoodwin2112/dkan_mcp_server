@@ -33,7 +33,8 @@ use Mcp\Server\ClientGateway;
   ],
   readOnly: FALSE,
   destructive: TRUE,
-  idempotent: FALSE,
+  // Deleting an already-deleted dataset has no further effect on the catalog.
+  idempotent: TRUE,
   openWorld: FALSE,
 )]
 final class DeleteDatasetTool extends WriteToolBase {

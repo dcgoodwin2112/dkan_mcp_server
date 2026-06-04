@@ -36,7 +36,8 @@ use Mcp\Server\ClientGateway;
   readOnly: FALSE,
   destructive: FALSE,
   idempotent: FALSE,
-  openWorld: FALSE,
+  // Fetches the resource's source URL, reaching outside the local catalog.
+  openWorld: TRUE,
 )]
 final class ImportResourceTool extends WriteToolBase {
 
