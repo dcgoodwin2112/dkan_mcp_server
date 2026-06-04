@@ -15,7 +15,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * Concrete tools declare only their #[Tool] attribute and execute(); DI and
  * native enablement live here.
  */
-abstract class MetastoreToolBase extends ToolPluginBase {
+abstract class MetastoreToolBase extends ToolPluginBase implements GroupedToolInterface {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function toolGroup(): string {
+    return ToolGroup::METASTORE;
+  }
 
   public function __construct(
     array $configuration,

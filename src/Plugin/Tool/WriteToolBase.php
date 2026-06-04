@@ -14,7 +14,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *
  * Concrete tools override checkAccess() with their fine-grained permission.
  */
-abstract class WriteToolBase extends ToolPluginBase {
+abstract class WriteToolBase extends ToolPluginBase implements GroupedToolInterface {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function toolGroup(): string {
+    return ToolGroup::WRITE;
+  }
 
   public function __construct(
     array $configuration,

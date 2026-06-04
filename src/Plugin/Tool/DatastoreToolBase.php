@@ -12,7 +12,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Base for read tools backed by the shared dkan_query_tools.datastore service.
  */
-abstract class DatastoreToolBase extends ToolPluginBase {
+abstract class DatastoreToolBase extends ToolPluginBase implements GroupedToolInterface {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function toolGroup(): string {
+    return ToolGroup::DATASTORE;
+  }
 
   public function __construct(
     array $configuration,

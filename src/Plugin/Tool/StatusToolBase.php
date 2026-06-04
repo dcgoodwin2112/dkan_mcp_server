@@ -12,7 +12,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Base for read tools backed by the dkan_mcp_server.tools.status service.
  */
-abstract class StatusToolBase extends ToolPluginBase {
+abstract class StatusToolBase extends ToolPluginBase implements GroupedToolInterface {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function toolGroup(): string {
+    return ToolGroup::STATUS;
+  }
 
   public function __construct(
     array $configuration,

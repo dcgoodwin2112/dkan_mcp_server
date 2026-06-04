@@ -15,7 +15,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * Read harvest tools use the base (allowed) access; write harvest tools add a
  * checkAccess() override.
  */
-abstract class HarvestToolBase extends ToolPluginBase {
+abstract class HarvestToolBase extends ToolPluginBase implements GroupedToolInterface {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function toolGroup(): string {
+    return ToolGroup::HARVEST;
+  }
 
   public function __construct(
     array $configuration,
