@@ -1,0 +1,5 @@
+# Allowlist: docs/ holds untracked planning history; track only the launch docs.
+*
+!.gitignore
+!ARCHITECTURE.md
+!ROADMAP.md

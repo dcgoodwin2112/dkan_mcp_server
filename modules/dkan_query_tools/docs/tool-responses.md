@@ -79,8 +79,8 @@ to `"(unknown)"`).
 
 In `dkan_drupal_ai_query` an event subscriber
 (`UnknownColumnGuardSubscriber`) counts these per agent turn and trips a
-structured refusal at the third one. See that module's
-[refusal-flow.md](../../dkan_drupal_ai_query/docs/refusal-flow.md).
+structured refusal at the third one. See that module's own refusal-flow
+documentation.
 
 ### Generic error
 
@@ -125,5 +125,5 @@ Errors from these follow the same generic-error shape above.
 
 - [database-roles.md](database-roles.md) — read-only MariaDB role for
   query execution.
-- The `dkan_drupal_ai_query` module's [provenance doc](../../dkan_drupal_ai_query/docs/provenance.md)
-  for how a downstream consumer renders these flags to end users.
+- The `dkan_drupal_ai_query` module's own provenance documentation for how a
+  downstream consumer renders these flags to end users.
