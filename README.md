@@ -133,6 +133,32 @@ metastore-backed resources carry the metastore list tag (`node_list:data`, via
 resource. The schema list is untagged (static; it changes only on deploy). All
 content varies by the `user.permissions` cache context.
 
+## Prompts
+
+Five curated MCP **prompts** ship as `mcp_prompt_config` entities
+(`config/install/mcp_server.mcp_prompt_config.*.yml`); they steer a client
+toward the right tools for a task. Admins can add or edit more via
+`mcp_server_ui` (`/admin/config/services/mcp-server/prompts`).
+
+| Prompt | Arguments | Steers toward |
+|---|---|---|
+| `explore_dataset` | `dataset_id` | `get_dataset`, `get_data_dictionary`, `query_datastore` |
+| `build_datastore_query` | `dataset_id`, `question` | `get_datastore_schema`, `query_datastore` |
+| `find_datasets` | `topic` | `search_datasets`, `list_datasets` |
+| `diagnose_harvest` | `harvest_id` | `get_harvest_runs`, `get_harvest_run_result`, `get_site_status` |
+| `dataset_health_check` | `dataset_id` | `get_import_status`, `get_datastore_stats` |
+
+**Rendering shim.** At the pinned upstream commits `prompts/get` is unusable for
+every config prompt: the SDK formatter json-encodes a message's content *list*
+instead of emitting typed content, and `PromptConfigHandler` never substitutes
+`{{ arg }}` placeholders. `PromptRenderSubscriber` works around both by
+regenerating the `prompts/get` result from the config entity plus the request's
+arguments — via `ResponseEvent`, so it covers HTTP and stdio identically (the
+same mechanism as `ToolAccessSubscriber`). Remove the subscriber, its service,
+and its tests once upstream fixes both defects and the pins are bumped;
+`UpstreamContractTest::testPromptRenderShimStillNeeded` fails when that happens,
+signalling removal. See `docs/PROMPTS_PLAN.md`.
+
 ## Access control
 
 Reads require only `access mcp server`. Writes are gated by fine-grained

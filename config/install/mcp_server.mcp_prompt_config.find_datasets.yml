@@ -1,0 +1,25 @@
+id: find_datasets
+label: 'Find datasets for a topic'
+title: 'Find datasets for a topic'
+description: 'Discover catalog datasets relevant to a topic.'
+status: true
+dependencies:
+  enforced:
+    module:
+      - dkan_mcp_server
+arguments:
+  - label: 'Topic'
+    machine_name: topic
+    description: 'Subject or keyword to search the catalog for.'
+    required: true
+messages:
+  - role: user
+    content:
+      - type: text
+        text: |
+          Find DKAN datasets about "{{ topic }}".
+
+          1. Call search_datasets with the keyword "{{ topic }}".
+          2. If results are thin, call list_datasets to scan the catalog for related titles.
+
+          Return the most relevant datasets as a short list: title, dataset id (UUID), and a one-line reason it matches "{{ topic }}". Note which looks most authoritative.

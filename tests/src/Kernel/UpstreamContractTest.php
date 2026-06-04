@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\Tests\dkan_mcp_server\Kernel;
 
 use Drupal\KernelTests\KernelTestBase;
+use Mcp\Capability\Formatter\PromptResultFormatter;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\Yaml\Yaml;
 
@@ -48,6 +49,17 @@ class UpstreamContractTest extends KernelTestBase {
     'Mcp\\Schema\\Result\\ListToolsResult',
     'Mcp\\Schema\\Tool',
     'Mcp\\Server\\ClientGateway',
+    // Consumed by the prompts/get render shim (PromptRenderSubscriber) and the
+    // defect guard below.
+    'Mcp\\Capability\\Formatter\\PromptResultFormatter',
+    'Mcp\\Schema\\Content\\PromptMessage',
+    'Mcp\\Schema\\Content\\TextContent',
+    'Mcp\\Schema\\Content\\ImageContent',
+    'Mcp\\Schema\\Content\\AudioContent',
+    'Mcp\\Schema\\Content\\EmbeddedResource',
+    'Mcp\\Schema\\Content\\TextResourceContents',
+    'Mcp\\Schema\\Request\\GetPromptRequest',
+    'Mcp\\Schema\\Result\\GetPromptResult',
   ];
 
   /**
@@ -232,6 +244,39 @@ class UpstreamContractTest extends KernelTestBase {
         "Service missing: $service",
       );
     }
+  }
+
+  /**
+   * The prompts/get render defect the shim works around is still present.
+   *
+   * PromptRenderSubscriber regenerates prompts/get because the SDK formatter
+   * json-encodes a config message's content *list* (it only handles a string
+   * or a single typed dict) instead of emitting the item's text. A single
+   * {type: text, text: 'x'} list must therefore NOT round-trip to 'x'. When
+   * upstream fixes this, $content->text becomes 'x' and this test fails — the
+   * signal to delete PromptRenderSubscriber and its service/tests
+   * (see docs/PROMPTS_PLAN.md removal criteria).
+   */
+  public function testPromptRenderShimStillNeeded(): void {
+    $formatter = new PromptResultFormatter();
+    $messages = $formatter->format([
+      ['role' => 'user', 'content' => [['type' => 'text', 'text' => 'x']]],
+    ]);
+
+    $this->assertCount(1, $messages, 'Formatter no longer yields one message per config message.');
+    $content = $messages[0]->content;
+    $this->assertInstanceOf('Mcp\\Schema\\Content\\TextContent', $content);
+    $this->assertNotSame(
+      'x',
+      $content->text,
+      'mcp/sdk now renders config content lists correctly; remove PromptRenderSubscriber.',
+    );
+    // The text is the content list json-encoded verbatim (Defect A); decode it
+    // back to prove that, independent of the encoder's formatting.
+    $this->assertSame(
+      [['type' => 'text', 'text' => 'x']],
+      json_decode($content->text, TRUE),
+    );
   }
 
   /**
