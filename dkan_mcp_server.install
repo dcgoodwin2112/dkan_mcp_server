@@ -6,6 +6,129 @@
  */
 
 /**
+ * Concrete resource provider plugin IDs this module opts into.
+ *
+ * @return string[]
+ *   The plugin IDs registered in mcp_server.resource_providers on install.
+ */
+function _dkan_mcp_server_resource_provider_ids() {
+  return ['dkan_catalog', 'dkan_schemas'];
+}
+
+/**
+ * Resource template provider plugin IDs this module opts into.
+ *
+ * @return string[]
+ *   The plugin IDs registered in mcp_server.resource_template_providers.
+ */
+function _dkan_mcp_server_resource_template_provider_ids() {
+  return [
+    'dkan_dataset',
+    'dkan_distribution',
+    'dkan_dataset_dictionary',
+    'dkan_datastore_schema',
+  ];
+}
+
+/**
+ * Merges plugin IDs into an mcp_server resource-registry config object.
+ *
+ * Idempotent and non-clobbering: only adds missing entries, preserving any
+ * others (e.g. mcp_server_examples or admin-UI edits). Shared by hook_install()
+ * and the update hooks so fresh and upgraded sites converge on the same config.
+ *
+ * @param string $config_name
+ *   The registry config object (mcp_server.resource_providers or
+ *   mcp_server.resource_template_providers).
+ * @param string[] $ids
+ *   The plugin IDs to ensure are present and enabled.
+ */
+function _dkan_mcp_server_merge_providers($config_name, array $ids) {
+  $config = \Drupal::configFactory()->getEditable($config_name);
+  $plugins = $config->get('plugins') ?? [];
+  $existing = array_column($plugins, 'id');
+  foreach ($ids as $id) {
+    if (!in_array($id, $existing, TRUE)) {
+      $plugins[] = [
+        'id' => $id,
+        'enabled' => TRUE,
+        'configuration' => ['enabled' => TRUE],
+      ];
+    }
+  }
+  $config->set('plugins', array_values($plugins))->save();
+}
+
+/**
+ * Removes plugin IDs from an mcp_server resource-registry config object.
+ *
+ * @param string $config_name
+ *   The registry config object.
+ * @param string[] $ids
+ *   The plugin IDs to remove, leaving any others intact.
+ */
+function _dkan_mcp_server_remove_providers($config_name, array $ids) {
+  $config = \Drupal::configFactory()->getEditable($config_name);
+  $plugins = $config->get('plugins');
+  if ($plugins === NULL) {
+    return;
+  }
+  $remaining = array_values(array_filter(
+    $plugins,
+    static fn(array $p) => !in_array($p['id'] ?? '', $ids, TRUE),
+  ));
+  $config->set('plugins', $remaining)->save();
+}
+
+/**
+ * Merges this module's concrete resource providers into config.
+ */
+function _dkan_mcp_server_register_resource_providers() {
+  _dkan_mcp_server_merge_providers(
+    'mcp_server.resource_providers',
+    _dkan_mcp_server_resource_provider_ids(),
+  );
+}
+
+/**
+ * Merges this module's resource template providers into config.
+ */
+function _dkan_mcp_server_register_resource_template_providers() {
+  _dkan_mcp_server_merge_providers(
+    'mcp_server.resource_template_providers',
+    _dkan_mcp_server_resource_template_provider_ids(),
+  );
+}
+
+/**
+ * Implements hook_install().
+ *
+ * Resource providers (concrete + templated) register only when listed in their
+ * mcp_server registry config objects, unlike tools which auto-enable.
+ */
+function dkan_mcp_server_install() {
+  _dkan_mcp_server_register_resource_providers();
+  _dkan_mcp_server_register_resource_template_providers();
+}
+
+/**
+ * Implements hook_uninstall().
+ *
+ * Remove only this module's entries from both registries, leaving any others
+ * intact.
+ */
+function dkan_mcp_server_uninstall() {
+  _dkan_mcp_server_remove_providers(
+    'mcp_server.resource_providers',
+    _dkan_mcp_server_resource_provider_ids(),
+  );
+  _dkan_mcp_server_remove_providers(
+    'mcp_server.resource_template_providers',
+    _dkan_mcp_server_resource_template_provider_ids(),
+  );
+}
+
+/**
  * Ensure dkan_mcp_server.settings exists with the OAuth-only auth posture.
  *
  * The http_basic_auth flag was added after initial release. Installs enabled
@@ -23,4 +146,26 @@ function dkan_mcp_server_update_10001() {
   if ($config->get('http_basic_auth') === NULL) {
     $config->set('http_basic_auth', FALSE)->save();
   }
+}
+
+/**
+ * Register dkan_catalog / dkan_schemas providers on existing installs.
+ *
+ * The resource providers were added after initial release and only ran from
+ * hook_install(), so sites enabled earlier never got them into
+ * mcp_server.resource_providers. Backfill via the shared, idempotent helper.
+ */
+function dkan_mcp_server_update_10002() {
+  _dkan_mcp_server_register_resource_providers();
+}
+
+/**
+ * Register the dataset/distribution/dictionary/datastore-schema templates.
+ *
+ * The resource *template* providers were added after the concrete providers and
+ * only run from hook_install(), so sites enabled earlier never got them into
+ * mcp_server.resource_template_providers. Backfill via the shared helper.
+ */
+function dkan_mcp_server_update_10003() {
+  _dkan_mcp_server_register_resource_template_providers();
 }

@@ -10,14 +10,33 @@ transports). This module delegates transport, discovery, and session handling to
 
 ## Requirements
 
-- `drupal/mcp_server` (`2.x-dev`, which brings `mcp/sdk` `dev-main`) and
-  `drupal/dkan` (`4.x-dev`) — both declared in the package `require`.
+- `drupal/mcp_server` and `mcp/sdk` (both ride dev branches; pinned to tested
+  commits in `require` — see [Tested versions](#tested-versions)) and
+  `drupal/dkan` (`4.x-dev`).
 - DKAN `dkan_metastore`, `dkan_datastore`, `dkan_harvest`, and `dkan_query_tools`
   (the last ships bundled — see [Bundled `dkan_query_tools`](#bundled-dkan_query_tools)).
 - OAuth HTTP clients also need `drupal/simple_oauth:^6` and
   `e0ipso/simple_oauth_21:^1` plus the optional `mcp_server_oauth` submodule.
   These are in Composer `suggest` (not `require`) — install them only for the
   OAuth path (see [OAuth](#oauth)).
+
+### Tested versions
+
+`mcp_server` (`2.x-dev`) and `mcp/sdk` (`dev-main`) are moving targets, so
+`require` pins them to specific commits this module is verified against:
+
+| Package | Branch | Pinned commit |
+|---|---|---|
+| `drupal/mcp_server` | `2.x-dev` | `5d6b54c6f2f29574248c56c768968438eac3be6c` |
+| `mcp/sdk` | `dev-main` | `0347dc85b4e577037f2fa177ac3fccd6aca7d8d7` |
+
+Tested matrix: Drupal core `^10.2 || ^11`, PHP 8.3.
+
+**To bump:** update the `#<sha>` pins in `composer.json`, run `composer update
+drupal/mcp_server mcp/sdk`, then the kernel `ToolDiscoveryTest` — it instantiates
+all tools via DI against the real upstream plugins, so most API drift surfaces
+there. The consumed upstream surface is enumerated in
+[`docs/DEPENDENCY_STABILITY_PLAN.md`](docs/DEPENDENCY_STABILITY_PLAN.md).
 
 ## Installation
 
@@ -72,6 +91,47 @@ services (metastore/datastore/search); harvest, resource, status, and write
 tools delegate to local logic services in `src/Tools/`. One `#[Tool]` plugin per
 tool lives in `src/Plugin/Tool/`, each extending a per-service base class
 (`MetastoreToolBase`, `WriteToolBase`, …) that supplies DI and native enablement.
+
+## Resources
+
+Catalog data is also exposed as MCP **resources** (for clients that pin context
+instead of re-calling tools), under the `dkan://` URI scheme:
+
+**Concrete** resources (fixed URIs, `#[ResourceProvider]` in
+`src/Plugin/ResourceProvider/`):
+
+| URI | Backing |
+|---|---|
+| `dkan://catalog` | DCAT catalog (`dkan_query_tools.metastore`) |
+| `dkan://schemas` | metastore schema identifiers |
+
+**Templated** resources (parameterized URIs, `#[ResourceTemplateProvider]` in
+`src/Plugin/ResourceTemplateProvider/`):
+
+| URI template | Backing |
+|---|---|
+| `dkan://dataset/{id}` | dataset metadata by UUID (`MetastoreTools::getDataset`) |
+| `dkan://distribution/{id}` | distribution metadata by UUID (`getDistribution`) |
+| `dkan://dataset/{id}/dictionary` | linked data dictionaries (`getDataDictionary`) |
+| `dkan://datastore/{resourceId}/schema` | column schema by resource_id (`DatastoreTools::getDatastoreSchema`) |
+
+The datastore schema is keyed by `resource_id` (`identifier__version`, as
+surfaced by `list_distributions` / `resolve_resource`) — the datastore's own
+key — so no distribution-UUID resolution is needed. All delegate to the same
+shared services as the read tools. Both registries are opt-in: providers
+register only when listed in `mcp_server.resource_providers` (concrete) /
+`mcp_server.resource_template_providers` (templated). This module's
+`hook_install()` merges its entries into both (and `hook_uninstall()` removes
+only those), so no manual config step is needed. Reads are open under `access
+mcp server`, matching the read tools; a well-formed URI for an id that does not
+resolve returns resource-not-found.
+
+Content caches permanently and is invalidated by DKAN cache tags: the
+metastore-backed resources carry the metastore list tag (`node_list:data`, via
+`dkan.metastore.metastore_item_factory`, matching DKAN's own
+`MetastoreApiResponse`), so any dataset/distribution edit busts the cached
+resource. The schema list is untagged (static; it changes only on deploy). All
+content varies by the `user.permissions` cache context.
 
 ## Access control
 
