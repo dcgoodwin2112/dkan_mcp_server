@@ -39,7 +39,8 @@ use Mcp\Server\ClientGateway;
   ],
   readOnly: FALSE,
   destructive: TRUE,
-  idempotent: FALSE,
+  // Deleting an already-deleted item has no further effect on the metastore.
+  idempotent: TRUE,
   openWorld: FALSE,
 )]
 final class DeleteMetastoreItemTool extends WriteToolBase {

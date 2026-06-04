@@ -31,7 +31,8 @@ use Mcp\Server\ClientGateway;
   readOnly: FALSE,
   destructive: FALSE,
   idempotent: FALSE,
-  openWorld: FALSE,
+  // The harvest runner fetches the remote source, reaching outside the catalog.
+  openWorld: TRUE,
 )]
 final class RunHarvestTool extends HarvestToolBase {
 
