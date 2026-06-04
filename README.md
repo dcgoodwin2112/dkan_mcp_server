@@ -236,6 +236,38 @@ opt-in (default off). `dkan_mcp_server_update_10001` creates the setting at the
 secure default for installs that predate the flag, so run the `drush cset … true`
 above (then `drush cr`) to restore Basic auth if your clients rely on it.
 
+## CORS
+
+Browser-based MCP clients (e.g. MCP Inspector) need cross-origin access to
+`POST /mcp`. Drupal core CORS is **off by default**, so enable it with an explicit
+origin allowlist in `sites/*/services.yml`:
+
+```yaml
+parameters:
+  cors.config:
+    enabled: true
+    allowedOrigins: ['https://inspector.example']  # explicit; never '*'
+    allowedMethods: ['GET', 'POST', 'DELETE', 'OPTIONS']
+    allowedHeaders: ['content-type']
+    supportsCredentials: false  # true only with cookies, and never with '*'
+```
+
+Two layers fill in the MCP-specific bits automatically once CORS is enabled, so
+you only manage the origin allowlist:
+
+- `mcp_server`'s compiler pass adds the MCP methods and the request headers
+  `content-type`, `mcp-protocol-version`, `mcp-session-id`.
+- This module's `McpCorsAuthHeaderPass` adds `authorization` to `allowedHeaders`
+  (required for the OAuth Bearer header cross-origin) and `mcp-session-id` to
+  `exposedHeaders` (so browser JS can read the session id off responses). It is a
+  no-op when CORS is disabled.
+
+Rebuild the container after editing (`drush cr`). Notes:
+
+- **Never** pair `allowedOrigins: ['*']` with `supportsCredentials: true` —
+  browsers reject it and it is insecure. Use an explicit allowlist.
+- This is environment-specific and cannot ship as fixed module config.
+
 ## Testing
 
 **Unit** (`tests/src/Unit`) — standalone bootstrap, no Drupal kernel:
