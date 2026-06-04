@@ -8,6 +8,13 @@ Successor to `dkan_mcp` (which vendors the MCP SDK and hand-rolls both
 transports). This module delegates transport, discovery, and session handling to
 `mcp_server` and contributes only the DKAN tools plus per-tool access control.
 
+## Architecture
+
+For the design — the thin-adapter pattern, the tool/resource/prompt surfaces,
+the access-control and OAuth layers, the two downstream shims, and the update
+hooks — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Outstanding and
+blocked work is in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
 ## Requirements
 
 - `drupal/mcp_server` and `mcp/sdk` (both ride dev branches; pinned to tested
@@ -35,8 +42,8 @@ Tested matrix: Drupal core `^10.2 || ^11`, PHP 8.3.
 **To bump:** update the `#<sha>` pins in `composer.json`, run `composer update
 drupal/mcp_server mcp/sdk`, then the kernel `ToolDiscoveryTest` — it instantiates
 all tools via DI against the real upstream plugins, so most API drift surfaces
-there. The consumed upstream surface is enumerated in
-[`docs/DEPENDENCY_STABILITY_PLAN.md`](docs/DEPENDENCY_STABILITY_PLAN.md).
+there. The consumed upstream surface and drift guards are described in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (Dependency stability).
 
 ## Installation
 
@@ -168,7 +175,8 @@ arguments — via `ResponseEvent`, so it covers HTTP and stdio identically (the
 same mechanism as `ToolAccessSubscriber`). Remove the subscriber, its service,
 and its tests once upstream fixes both defects and the pins are bumped;
 `UpstreamContractTest::testPromptRenderShimStillNeeded` fails when that happens,
-signalling removal. See `docs/PROMPTS_PLAN.md`.
+signalling removal. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the upstream
+defects, the open MRs, and the removal trigger.
 
 ## Access control
 
@@ -189,7 +197,7 @@ permissions, enforced per-tool by `ToolAccessSubscriber` on **both** `tools/call
 `mcp_server` core declares per-tool access (`ToolPluginInterface::checkToolAccess()`)
 but never invokes it; `ToolAccessSubscriber` activates that contract via the SDK's
 `RequestEvent`/`ResponseEvent`. The upstream contribution to move this into core is
-tracked in [`docs/contrib-mcp-server-contributions.md`](docs/contrib-mcp-server-contributions.md).
+tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Settings
 
