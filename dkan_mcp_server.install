@@ -5,6 +5,46 @@
  * Install and update hooks for dkan_mcp_server.
  */
 
+use Drupal\Core\Config\FileStorage;
+
+/**
+ * Curated MCP prompt config IDs this module ships in config/install.
+ *
+ * @return string[]
+ *   The mcp_prompt_config entity IDs.
+ */
+function _dkan_mcp_server_prompt_ids() {
+  return [
+    'explore_dataset',
+    'build_datastore_query',
+    'find_datasets',
+    'diagnose_harvest',
+    'dataset_health_check',
+  ];
+}
+
+/**
+ * Installs this module's prompt configs from config/install if missing.
+ *
+ * Fresh installs get these automatically via the config installer; this
+ * backfills existing installs. Idempotent and non-clobbering: an admin's edits
+ * (e.g. via mcp_server_ui) to an already-present prompt are left untouched.
+ */
+function _dkan_mcp_server_install_prompts() {
+  $path = \Drupal::service('extension.list.module')->getPath('dkan_mcp_server');
+  $source = new FileStorage($path . '/config/install');
+  $storage = \Drupal::entityTypeManager()->getStorage('mcp_prompt_config');
+  foreach (_dkan_mcp_server_prompt_ids() as $id) {
+    if ($storage->load($id) !== NULL) {
+      continue;
+    }
+    $data = $source->read('mcp_server.mcp_prompt_config.' . $id);
+    if ($data !== FALSE) {
+      $storage->create($data)->save();
+    }
+  }
+}
+
 /**
  * Concrete resource provider plugin IDs this module opts into.
  *
@@ -168,4 +208,15 @@ function dkan_mcp_server_update_10002() {
  */
 function dkan_mcp_server_update_10003() {
   _dkan_mcp_server_register_resource_template_providers();
+}
+
+/**
+ * Install the curated MCP prompt configs on existing installs.
+ *
+ * The prompts (config/install/mcp_server.mcp_prompt_config.*.yml) were added
+ * after initial release. Fresh installs get them from the config installer;
+ * sites enabled earlier need this backfill. Idempotent and non-clobbering.
+ */
+function dkan_mcp_server_update_10004() {
+  _dkan_mcp_server_install_prompts();
 }

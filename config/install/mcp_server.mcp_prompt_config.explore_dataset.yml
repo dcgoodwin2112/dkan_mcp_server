@@ -1,0 +1,26 @@
+id: explore_dataset
+label: 'Explore a DKAN dataset'
+title: 'Explore a DKAN dataset'
+description: 'Summarize a dataset, its data dictionary, and a sample of its data.'
+status: true
+dependencies:
+  enforced:
+    module:
+      - dkan_mcp_server
+arguments:
+  - label: 'Dataset ID'
+    machine_name: dataset_id
+    description: 'Dataset identifier (UUID) to explore.'
+    required: true
+messages:
+  - role: user
+    content:
+      - type: text
+        text: |
+          Explore DKAN dataset {{ dataset_id }} and give me an overview.
+
+          1. Call get_dataset with id {{ dataset_id }} for title, description, and distributions.
+          2. Call get_data_dictionary for {{ dataset_id }} to learn the column titles and types.
+          3. Pick the dataset's main distribution, then call query_datastore with its resource_id and a small limit to sample the data.
+
+          Summarize what the dataset contains, list its columns with meanings, and note any sanity_flags from the query.

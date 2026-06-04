@@ -50,6 +50,17 @@ services:
     tags:
       - { name: event_subscriber }
 
+  # Renders prompts/get correctly until two upstream mcp_server defects land
+  # (content list double-encoding + no {{ arg }} substitution). Regenerates the
+  # result from the mcp_prompt_config entity + request args. Remove with the
+  # pins bump once upstream fixes both. Works on both HTTP and STDIO.
+  dkan_mcp_server.prompt_render_subscriber:
+    class: Drupal\dkan_mcp_server\EventSubscriber\PromptRenderSubscriber
+    arguments:
+      - '@entity_type.manager'
+    tags:
+      - { name: event_subscriber }
+
   # Advertises DKAN MCP OAuth scopes in RFC 9728 protected resource metadata.
   # It self-disables when simple_oauth_21 is not installed.
   dkan_mcp_server.resource_metadata_subscriber:

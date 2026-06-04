@@ -1,0 +1,29 @@
+id: build_datastore_query
+label: 'Build a datastore query'
+title: 'Build a datastore query'
+description: 'Draft and run a datastore query for a dataset from a plain-language question.'
+status: true
+dependencies:
+  enforced:
+    module:
+      - dkan_mcp_server
+arguments:
+  - label: 'Dataset ID'
+    machine_name: dataset_id
+    description: 'Dataset identifier (UUID) to query.'
+    required: true
+  - label: 'Question'
+    machine_name: question
+    description: 'The question to answer from the dataset, in plain language.'
+    required: true
+messages:
+  - role: user
+    content:
+      - type: text
+        text: |
+          Answer this question from DKAN dataset {{ dataset_id }}: "{{ question }}"
+
+          1. Resolve the dataset's main distribution to a resource_id (call get_dataset or resolve_resource for {{ dataset_id }}).
+          2. Call get_datastore_schema for that resource_id so you use exact column names.
+          3. Build a query_datastore call: choose the columns, conditions, sort, and limit that answer the question. Use literal operators (=, <, >, >=, <=, <>, like, in).
+          4. Run it, then state the answer. Report any sanity_flags (row_cap_hit, zero_rows, coverage_warning) and refine the query if needed.

@@ -1,0 +1,27 @@
+id: diagnose_harvest
+label: 'Diagnose a harvest'
+title: 'Diagnose a harvest'
+description: 'Triage a failed or stale DKAN harvest.'
+status: true
+dependencies:
+  enforced:
+    module:
+      - dkan_mcp_server
+arguments:
+  - label: 'Harvest ID'
+    machine_name: harvest_id
+    description: 'Harvest plan identifier to diagnose.'
+    required: true
+messages:
+  - role: user
+    content:
+      - type: text
+        text: |
+          Diagnose DKAN harvest {{ harvest_id }}.
+
+          1. Call get_harvest_plan for {{ harvest_id }} to confirm the source and its configuration.
+          2. Call get_harvest_runs for {{ harvest_id }} to find the most recent run(s).
+          3. Call get_harvest_run_result for the latest run to see what was created, updated, or errored.
+          4. Call get_site_status to check whether queues or the datastore are backed up.
+
+          Summarize the harvest's health, name the likely cause of any failure or staleness, and recommend a concrete next step.

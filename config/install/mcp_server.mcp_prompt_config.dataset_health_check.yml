@@ -1,0 +1,26 @@
+id: dataset_health_check
+label: 'Dataset health check'
+title: 'Dataset health check'
+description: 'Check datastore import status and row/column sanity for a dataset.'
+status: true
+dependencies:
+  enforced:
+    module:
+      - dkan_mcp_server
+arguments:
+  - label: 'Dataset ID'
+    machine_name: dataset_id
+    description: 'Dataset identifier (UUID) to check.'
+    required: true
+messages:
+  - role: user
+    content:
+      - type: text
+        text: |
+          Run a health check on DKAN dataset {{ dataset_id }}.
+
+          1. Call get_dataset (or get_dataset_info) for {{ dataset_id }} to list its distributions and resolve resource_ids.
+          2. For each resource, call get_import_status to confirm the datastore import finished (not pending, failed, or in progress).
+          3. Call get_datastore_stats for each imported resource to check row counts, null-heavy columns, and distinct values.
+
+          Report whether the dataset's data is fully imported and usable, and flag any resource that failed to import, is empty, or has suspicious all-null columns.
