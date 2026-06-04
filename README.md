@@ -148,6 +148,17 @@ toward the right tools for a task. Admins can add or edit more via
 | `diagnose_harvest` | `harvest_id` | `get_harvest_runs`, `get_harvest_run_result`, `get_site_status` |
 | `dataset_health_check` | `dataset_id` | `get_import_status`, `get_datastore_stats` |
 
+**Argument completion.** The `dataset_id` argument (on `explore_dataset`,
+`build_datastore_query`, `dataset_health_check`) autocompletes against the live
+catalog via the `dkan_dataset_id` completion provider
+(`#[PromptArgumentCompletionProvider]`, delegating to `dkan_query_tools`):
+`completion/complete` with empty input suggests the first page of dataset
+identifiers; partial input matches catalog datasets by title or keyword via
+search (whole catalog), and additionally matches identifier substrings within
+the first page of results (a cheap supplement kept off the per-keystroke hot
+path, since dataset identifiers are not full-text indexed). Clients that support
+argument completion get valid IDs without a separate catalog lookup.
+
 **Rendering shim.** At the pinned upstream commits `prompts/get` is unusable for
 every config prompt: the SDK formatter json-encodes a message's content *list*
 instead of emitting typed content, and `PromptConfigHandler` never substitutes

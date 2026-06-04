@@ -12,6 +12,9 @@ arguments:
     machine_name: dataset_id
     description: 'Dataset identifier (UUID) to query.'
     required: true
+    completion_providers:
+      - plugin_id: dkan_dataset_id
+        configuration: {  }
   - label: 'Question'
     machine_name: question
     description: 'The question to answer from the dataset, in plain language.'
