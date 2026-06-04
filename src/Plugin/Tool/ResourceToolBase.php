@@ -12,7 +12,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Base for read tools backed by the dkan_mcp_server.tools.resource service.
  */
-abstract class ResourceToolBase extends ToolPluginBase {
+abstract class ResourceToolBase extends ToolPluginBase implements GroupedToolInterface {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function toolGroup(): string {
+    return ToolGroup::RESOURCE;
+  }
 
   public function __construct(
     array $configuration,

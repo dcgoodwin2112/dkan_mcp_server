@@ -1,0 +1,7 @@
+dkan_mcp_server.settings_form:
+  path: '/admin/config/services/dkan-mcp-server'
+  defaults:
+    _form: 'Drupal\dkan_mcp_server\Form\McpSettingsForm'
+    _title: 'DKAN MCP Server'
+  requirements:
+    _permission: 'administer dkan mcp server'

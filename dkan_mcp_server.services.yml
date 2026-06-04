@@ -41,12 +41,14 @@ services:
 
   # Enforces each tool plugin's self-declared access (checkToolAccess) that
   # mcp_server core declares but never invokes: denies tools/call and hides
-  # tools from tools/list. Works on both HTTP and STDIO.
+  # tools from tools/list. Works on both HTTP and STDIO. Also enforces the
+  # operational disabled_groups setting (config.factory) on both gates.
   dkan_mcp_server.tool_access_subscriber:
     class: Drupal\dkan_mcp_server\EventSubscriber\ToolAccessSubscriber
     arguments:
       - '@plugin.manager.mcp_server.tool'
       - '@current_user'
+      - '@config.factory'
     tags:
       - { name: event_subscriber }
 

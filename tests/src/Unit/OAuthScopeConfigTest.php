@@ -44,7 +44,12 @@ final class OAuthScopeConfigTest extends TestCase {
    * The write role grants every write permission plus access mcp server.
    */
   public function testWriteRoleGrantsAllWritePermissions(): void {
-    $expected = array_keys(self::parse('dkan_mcp_server.permissions.yml'));
+    // Only the per-operation write grants (every "* via mcp" permission), not
+    // operational permissions like 'administer dkan mcp server'.
+    $expected = array_values(array_filter(
+      array_keys(self::parse('dkan_mcp_server.permissions.yml')),
+      static fn (string $permission): bool => str_ends_with($permission, 'via mcp'),
+    ));
     $expected[] = 'access mcp server';
     sort($expected);
 

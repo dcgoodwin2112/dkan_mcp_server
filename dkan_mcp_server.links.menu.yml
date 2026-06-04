@@ -1,0 +1,5 @@
+dkan_mcp_server.settings_form:
+  title: 'DKAN MCP Server'
+  description: 'Enable or disable DKAN MCP tool groups.'
+  parent: system.admin_config_services
+  route_name: dkan_mcp_server.settings_form

@@ -9,8 +9,12 @@ use Drupal\Component\Plugin\PluginInspectionInterface;
 use Drupal\Component\Plugin\PluginManagerInterface;
 use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Access\AccessResultInterface;
+use Drupal\Core\Config\ConfigFactoryInterface;
+use Drupal\Core\Config\ImmutableConfig;
 use Drupal\Core\Session\AccountProxyInterface;
 use Drupal\dkan_mcp_server\EventSubscriber\ToolAccessSubscriber;
+use Drupal\dkan_mcp_server\Plugin\Tool\GroupedToolInterface;
+use Drupal\dkan_mcp_server\Plugin\Tool\ToolGroup;
 use Drupal\mcp_server\Exception\McpAuthorizationDeniedException;
 use Drupal\mcp_server\Plugin\ToolPluginInterface;
 use Mcp\Event\RequestEvent;
@@ -48,6 +52,7 @@ final class ToolAccessSubscriberTest extends TestCase {
     $subscriber = new ToolAccessSubscriber(
       $this->managerReturning(['delete_dataset' => $this->toolPlugin(AccessResult::forbidden())]),
       $this->user(),
+      $this->configFactory(),
     );
     $event = new RequestEvent(new CallToolRequest('delete_dataset', []), $this->session());
 
@@ -69,6 +74,7 @@ final class ToolAccessSubscriberTest extends TestCase {
     $subscriber = new ToolAccessSubscriber(
       $this->managerSpy($resolved, ['list_datasets' => $this->toolPlugin(AccessResult::allowed())]),
       $this->user(),
+      $this->configFactory(),
     );
 
     $subscriber->onRequest(new RequestEvent(new CallToolRequest('list_datasets', []), $this->session()));
@@ -81,7 +87,7 @@ final class ToolAccessSubscriberTest extends TestCase {
    */
   public function testNonCallRequestIgnored(): void {
     $resolved = [];
-    $subscriber = new ToolAccessSubscriber($this->managerSpy($resolved, []), $this->user());
+    $subscriber = new ToolAccessSubscriber($this->managerSpy($resolved, []), $this->user(), $this->configFactory());
 
     $subscriber->onRequest(new RequestEvent(new ListToolsRequest(), $this->session()));
 
@@ -93,7 +99,7 @@ final class ToolAccessSubscriberTest extends TestCase {
    */
   public function testCallDeferredWhenPluginNotFound(): void {
     $resolved = [];
-    $subscriber = new ToolAccessSubscriber($this->managerSpy($resolved, []), $this->user());
+    $subscriber = new ToolAccessSubscriber($this->managerSpy($resolved, []), $this->user(), $this->configFactory());
 
     // No exception: the empty map makes the spy throw PluginNotFoundException,
     // which toolAllowed() swallows and defers.
@@ -110,6 +116,7 @@ final class ToolAccessSubscriberTest extends TestCase {
     $subscriber = new ToolAccessSubscriber(
       $this->managerSpy($resolved, ['bridge' => $this->createMock(PluginInspectionInterface::class)]),
       $this->user(),
+      $this->configFactory(),
     );
 
     $subscriber->onRequest(new RequestEvent(new CallToolRequest('bridge', []), $this->session()));
@@ -127,6 +134,7 @@ final class ToolAccessSubscriberTest extends TestCase {
         'delete_dataset' => $this->toolPlugin(AccessResult::forbidden()),
       ]),
       $this->user(),
+      $this->configFactory(),
     );
     $original = new Response(7, new ListToolsResult(
       [$this->tool('get_dataset'), $this->tool('delete_dataset')],
@@ -155,6 +163,7 @@ final class ToolAccessSubscriberTest extends TestCase {
         'list_datasets' => $this->toolPlugin(AccessResult::allowed()),
       ]),
       $this->user(),
+      $this->configFactory(),
     );
     $original = new Response(1, new ListToolsResult([$this->tool('get_dataset'), $this->tool('list_datasets')]));
     $event = new ResponseEvent($original, new ListToolsRequest(), $this->session());
@@ -172,6 +181,7 @@ final class ToolAccessSubscriberTest extends TestCase {
       // 'bridge' is absent from the map, so the manager throws and it defers.
       $this->managerReturning(['get_dataset' => $this->toolPlugin(AccessResult::allowed())]),
       $this->user(),
+      $this->configFactory(),
     );
     $original = new Response(1, new ListToolsResult([$this->tool('get_dataset'), $this->tool('bridge')]));
     $event = new ResponseEvent($original, new ListToolsRequest(), $this->session());
@@ -186,7 +196,7 @@ final class ToolAccessSubscriberTest extends TestCase {
    */
   public function testNonListResponseIgnored(): void {
     $resolved = [];
-    $subscriber = new ToolAccessSubscriber($this->managerSpy($resolved, []), $this->user());
+    $subscriber = new ToolAccessSubscriber($this->managerSpy($resolved, []), $this->user(), $this->configFactory());
     $original = new Response(1, new ListToolsResult([$this->tool('get_dataset')]));
     $event = new ResponseEvent($original, new CallToolRequest('get_dataset', []), $this->session());
 
@@ -201,7 +211,7 @@ final class ToolAccessSubscriberTest extends TestCase {
    */
   public function testNonListResultIgnored(): void {
     $resolved = [];
-    $subscriber = new ToolAccessSubscriber($this->managerSpy($resolved, []), $this->user());
+    $subscriber = new ToolAccessSubscriber($this->managerSpy($resolved, []), $this->user(), $this->configFactory());
     $original = new Response(1, 'not-a-list-result');
     $event = new ResponseEvent($original, new ListToolsRequest(), $this->session());
 
@@ -209,6 +219,94 @@ final class ToolAccessSubscriberTest extends TestCase {
 
     $this->assertSame($original, $event->getResponse());
     $this->assertSame([], $resolved);
+  }
+
+  /**
+   * A tools/call is denied when the tool's group is disabled, despite access.
+   */
+  public function testCallDeniedWhenGroupDisabled(): void {
+    $subscriber = new ToolAccessSubscriber(
+      $this->managerReturning([
+        'delete_dataset' => $this->groupedToolPlugin(ToolGroup::WRITE, AccessResult::allowed()),
+      ]),
+      $this->user(),
+      $this->configFactory([ToolGroup::WRITE]),
+    );
+
+    $this->expectException(McpAuthorizationDeniedException::class);
+    $subscriber->onRequest(new RequestEvent(new CallToolRequest('delete_dataset', []), $this->session()));
+  }
+
+  /**
+   * A tool whose group is not disabled is unaffected by group gating.
+   */
+  public function testCallAllowedWhenGroupEnabled(): void {
+    $subscriber = new ToolAccessSubscriber(
+      $this->managerReturning([
+        'update_dataset' => $this->groupedToolPlugin(ToolGroup::WRITE, AccessResult::allowed()),
+      ]),
+      $this->user(),
+      // A different group is disabled; the write tool stays callable.
+      $this->configFactory([ToolGroup::HARVEST]),
+    );
+
+    $subscriber->onRequest(new RequestEvent(new CallToolRequest('update_dataset', []), $this->session()));
+    $this->addToAssertionCount(1);
+  }
+
+  /**
+   * Tools in a disabled group are dropped from a tools/list result.
+   */
+  public function testListHidesDisabledGroupTools(): void {
+    $subscriber = new ToolAccessSubscriber(
+      $this->managerReturning([
+        'get_dataset' => $this->groupedToolPlugin(ToolGroup::METASTORE, AccessResult::allowed()),
+        'delete_dataset' => $this->groupedToolPlugin(ToolGroup::WRITE, AccessResult::allowed()),
+      ]),
+      $this->user(),
+      $this->configFactory([ToolGroup::WRITE]),
+    );
+    $original = new Response(1, new ListToolsResult([$this->tool('get_dataset'), $this->tool('delete_dataset')]));
+    $event = new ResponseEvent($original, new ListToolsRequest(), $this->session());
+
+    $subscriber->onResponse($event);
+
+    $this->assertSame(
+      ['get_dataset'],
+      array_map(fn (Tool $t): string => $t->name, $event->getResponse()->result->tools),
+    );
+  }
+
+  /**
+   * A tool that declares no group is never group-gated.
+   */
+  public function testUngroupedToolNotGroupGated(): void {
+    $subscriber = new ToolAccessSubscriber(
+      // Plain ToolPluginInterface (not GroupedToolInterface).
+      $this->managerReturning(['list_datasets' => $this->toolPlugin(AccessResult::allowed())]),
+      $this->user(),
+      $this->configFactory([ToolGroup::WRITE, ToolGroup::METASTORE]),
+    );
+
+    $subscriber->onRequest(new RequestEvent(new CallToolRequest('list_datasets', []), $this->session()));
+    $this->addToAssertionCount(1);
+  }
+
+  /**
+   * A missing disabled_groups key (pre-update install) gates nothing.
+   */
+  public function testMissingDisabledGroupsKeyIsSafe(): void {
+    $subscriber = new ToolAccessSubscriber(
+      $this->managerReturning([
+        'update_dataset' => $this->groupedToolPlugin(ToolGroup::WRITE, AccessResult::allowed()),
+      ]),
+      $this->user(),
+      // get('disabled_groups') returns NULL; the subscriber normalizes to [].
+      $this->configFactory(NULL),
+    );
+
+    $subscriber->onRequest(new RequestEvent(new CallToolRequest('update_dataset', []), $this->session()));
+    $this->addToAssertionCount(1);
   }
 
   /**
@@ -254,6 +352,35 @@ final class ToolAccessSubscriberTest extends TestCase {
     $plugin = $this->createMock(ToolPluginInterface::class);
     $plugin->method('checkToolAccess')->willReturn($access);
     return $plugin;
+  }
+
+  /**
+   * A grouped tool plugin with the given group and access result.
+   */
+  private function groupedToolPlugin(string $group, AccessResultInterface $access): ToolPluginInterface {
+    $plugin = $this->createMockForIntersectionOfInterfaces([
+      ToolPluginInterface::class,
+      GroupedToolInterface::class,
+    ]);
+    $plugin->method('checkToolAccess')->willReturn($access);
+    $plugin->method('toolGroup')->willReturn($group);
+    return $plugin;
+  }
+
+  /**
+   * A config factory whose dkan_mcp_server.settings has the given groups off.
+   *
+   * @param string[]|null $disabledGroups
+   *   The disabled_groups value, or NULL to simulate a missing key.
+   */
+  private function configFactory(?array $disabledGroups = []): ConfigFactoryInterface {
+    $config = $this->createMock(ImmutableConfig::class);
+    $config->method('get')->willReturnCallback(
+      static fn (string $key): mixed => $key === 'disabled_groups' ? $disabledGroups : NULL,
+    );
+    $factory = $this->createMock(ConfigFactoryInterface::class);
+    $factory->method('get')->with('dkan_mcp_server.settings')->willReturn($config);
+    return $factory;
   }
 
   /**

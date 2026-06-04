@@ -191,6 +191,30 @@ but never invokes it; `ToolAccessSubscriber` activates that contract via the SDK
 `RequestEvent`/`ResponseEvent`. The upstream contribution to move this into core is
 tracked in [`docs/contrib-mcp-server-contributions.md`](docs/contrib-mcp-server-contributions.md).
 
+## Settings
+
+A settings form at `/admin/config/services/dkan-mcp-server` (permission
+`administer dkan mcp server`) toggles **tool groups** — DKAN subsystems — on or off
+for every caller. Each tool belongs to exactly one group:
+
+| Group | Tools |
+|---|---|
+| `metastore` | dataset/distribution/schema/catalog reads |
+| `datastore` | datastore queries, schema/stats/import-status reads |
+| `search` | `search_datasets` |
+| `harvest` | all harvest tools (read **and** run/register/deregister) |
+| `resource` | `resolve_resource` |
+| `status` | `get_site_status`, `get_queue_status` |
+| `write` | dataset/metastore/datastore mutations |
+
+A disabled group is hidden from `tools/list` and rejected on `tools/call` (the same
+`ToolAccessSubscriber` gates, HTTP and stdio). This is **operational gating, not
+authorization**: groups are subsystems, so disabling `write` does not disable harvest
+mutations (those live in `harvest`). To control *who* may mutate data, use the `* via
+mcp` permissions above — they are enforced independently. Stored as
+`dkan_mcp_server.settings:disabled_groups` (empty = all enabled). HTTP auth and CORS
+are configured elsewhere (see below).
+
 ## OAuth
 
 OAuth is an opt-in HTTP transport path. The `simple_oauth` / `simple_oauth_21`

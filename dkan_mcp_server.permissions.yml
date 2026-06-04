@@ -29,3 +29,10 @@
   title: 'Manage DKAN harvests via MCP'
   description: 'Register, run, and deregister harvest plans through MCP tools.'
   restrict access: true
+
+# Administer the module's operational settings (the tool-group enable/disable
+# form). Not a per-tool grant — those stay above; this only gates the form.
+'administer dkan mcp server':
+  title: 'Administer DKAN MCP Server'
+  description: 'Configure DKAN MCP Server settings, including which tool groups are enabled.'
+  restrict access: true

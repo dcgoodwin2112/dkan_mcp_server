@@ -5,6 +5,12 @@ dkan_mcp_server.settings:
     http_basic_auth:
       type: boolean
       label: 'Enable HTTP Basic auth on the MCP endpoint'
+    disabled_groups:
+      type: sequence
+      label: 'Disabled tool groups'
+      sequence:
+        type: string
+        label: 'Tool group machine name'
 
 # Configuration for the dkan_dataset_id completion provider, referenced from an
 # McpPromptConfig argument's completion_providers (dynamic

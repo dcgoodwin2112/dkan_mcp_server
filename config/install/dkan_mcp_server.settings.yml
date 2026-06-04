@@ -5,3 +5,11 @@
 # clients can authenticate with a static Authorization: Basic header (e.g. the
 # bundled .mcp.json demo). Changing this requires a router rebuild (drush cr).
 http_basic_auth: false
+
+# Tool groups (DKAN subsystems) switched off for every caller. Each entry is a
+# ToolGroup machine name (metastore, datastore, search, harvest, resource,
+# status, write); listed groups are hidden from tools/list and rejected on
+# tools/call. This is operational gating, not authorization — write access is
+# still governed by the "* via mcp" permissions. Manage via the settings form
+# at /admin/config/services/dkan-mcp-server. Empty = all groups enabled.
+disabled_groups: {  }

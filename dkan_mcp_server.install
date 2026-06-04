@@ -276,3 +276,18 @@ function dkan_mcp_server_update_10004() {
 function dkan_mcp_server_update_10005() {
   _dkan_mcp_server_install_dataset_id_completer();
 }
+
+/**
+ * Initialize the disabled_groups setting (all tool groups enabled) if missing.
+ *
+ * The tool-group enable/disable setting was added after initial release. Fresh
+ * installs get it from config/install; existing installs need the key created
+ * at its default (empty = all groups enabled). Reads also normalize a missing
+ * key, so this is belt-and-suspenders for an explicit, exportable default.
+ */
+function dkan_mcp_server_update_10006() {
+  $config = \Drupal::configFactory()->getEditable('dkan_mcp_server.settings');
+  if ($config->get('disabled_groups') === NULL) {
+    $config->set('disabled_groups', [])->save();
+  }
+}

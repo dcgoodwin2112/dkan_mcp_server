@@ -12,7 +12,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 /**
  * Base for read tools backed by the shared dkan_query_tools.search service.
  */
-abstract class SearchToolBase extends ToolPluginBase {
+abstract class SearchToolBase extends ToolPluginBase implements GroupedToolInterface {
+
+  /**
+   * {@inheritdoc}
+   */
+  public function toolGroup(): string {
+    return ToolGroup::SEARCH;
+  }
 
   public function __construct(
     array $configuration,
