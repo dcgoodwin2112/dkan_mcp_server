@@ -46,6 +46,51 @@ function _dkan_mcp_server_install_prompts() {
 }
 
 /**
+ * Prompt IDs whose dataset_id argument gets the dkan_dataset_id completer.
+ *
+ * @return string[]
+ *   The mcp_prompt_config entity IDs that take a dataset_id argument.
+ */
+function _dkan_mcp_server_dataset_id_prompt_ids() {
+  return ['explore_dataset', 'build_datastore_query', 'dataset_health_check'];
+}
+
+/**
+ * Adds the dkan_dataset_id completer to existing prompts' dataset_id argument.
+ *
+ * Idempotent and non-clobbering: only adds the provider to a dataset_id
+ * argument that has none, so an admin's completion-provider edits survive.
+ * Fresh installs get this from config/install; this backfills existing ones.
+ */
+function _dkan_mcp_server_install_dataset_id_completer() {
+  $storage = \Drupal::entityTypeManager()->getStorage('mcp_prompt_config');
+  foreach (_dkan_mcp_server_dataset_id_prompt_ids() as $id) {
+    $entity = $storage->load($id);
+    if ($entity === NULL) {
+      continue;
+    }
+    $arguments = $entity->get('arguments') ?? [];
+    $changed = FALSE;
+    foreach ($arguments as &$argument) {
+      if (($argument['machine_name'] ?? '') !== 'dataset_id') {
+        continue;
+      }
+      if (!empty($argument['completion_providers'])) {
+        continue;
+      }
+      $argument['completion_providers'] = [
+        ['plugin_id' => 'dkan_dataset_id', 'configuration' => []],
+      ];
+      $changed = TRUE;
+    }
+    unset($argument);
+    if ($changed) {
+      $entity->set('arguments', $arguments)->save();
+    }
+  }
+}
+
+/**
  * Concrete resource provider plugin IDs this module opts into.
  *
  * @return string[]
@@ -219,4 +264,15 @@ function dkan_mcp_server_update_10003() {
  */
 function dkan_mcp_server_update_10004() {
   _dkan_mcp_server_install_prompts();
+}
+
+/**
+ * Add the dkan_dataset_id completion provider to existing prompts.
+ *
+ * The completion provider was added after the prompts shipped. Fresh installs
+ * get it from config/install; this backfills the dataset_id argument on
+ * existing prompt entities. Idempotent and non-clobbering.
+ */
+function dkan_mcp_server_update_10005() {
+  _dkan_mcp_server_install_dataset_id_completer();
 }

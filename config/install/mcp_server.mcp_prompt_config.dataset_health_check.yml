@@ -12,6 +12,9 @@ arguments:
     machine_name: dataset_id
     description: 'Dataset identifier (UUID) to check.'
     required: true
+    completion_providers:
+      - plugin_id: dkan_dataset_id
+        configuration: {  }
 messages:
   - role: user
     content:

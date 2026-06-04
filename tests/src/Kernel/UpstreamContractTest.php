@@ -77,6 +77,10 @@ class UpstreamContractTest extends KernelTestBase {
     // Resource template subsystem (src/Plugin/ResourceTemplateProvider/).
     'Drupal\\mcp_server\\Attribute\\ResourceTemplateProvider',
     'Drupal\\mcp_server\\Plugin\\ResourceTemplateProviderBase',
+    // Prompt argument completion subsystem
+    // (src/Plugin/PromptArgumentCompletionProvider/).
+    'Drupal\\mcp_server\\Attribute\\PromptArgumentCompletionProvider',
+    'Drupal\\mcp_server\\Plugin\\PromptArgumentCompletionProviderBase',
   ];
 
   /**
@@ -86,6 +90,7 @@ class UpstreamContractTest extends KernelTestBase {
     'Drupal\\mcp_server\\Plugin\\ToolPluginInterface',
     'Drupal\\mcp_server\\Plugin\\ResourceProviderInterface',
     'Drupal\\mcp_server\\Plugin\\ResourceTemplateProviderInterface',
+    'Drupal\\mcp_server\\Plugin\\PromptArgumentCompletionProviderInterface',
   ];
 
   /**
@@ -95,6 +100,7 @@ class UpstreamContractTest extends KernelTestBase {
     'plugin.manager.mcp_server.tool',
     'plugin.manager.mcp_server.resource_provider',
     'plugin.manager.mcp_server.resource_template_provider',
+    'plugin.manager.mcp_server.prompt_argument_completion_provider',
   ];
 
   /**
@@ -108,6 +114,9 @@ class UpstreamContractTest extends KernelTestBase {
     'Drupal\\mcp_server\\Resource\\CacheableResourceContent' => ['fromArray'],
     'Drupal\\mcp_server\\Plugin\\ResourceTemplateProviderInterface' => [
       'getUriTemplate', 'getResources', 'getResourceContent', 'checkAccess',
+    ],
+    'Drupal\\mcp_server\\Plugin\\PromptArgumentCompletionProviderInterface' => [
+      'getCompletions',
     ],
   ];
 

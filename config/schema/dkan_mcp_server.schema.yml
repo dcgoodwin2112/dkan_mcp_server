@@ -5,3 +5,15 @@ dkan_mcp_server.settings:
     http_basic_auth:
       type: boolean
       label: 'Enable HTTP Basic auth on the MCP endpoint'
+
+# Configuration for the dkan_dataset_id completion provider, referenced from an
+# McpPromptConfig argument's completion_providers (dynamic
+# mcp_server.completion_provider.[plugin_id] type).
+mcp_server.completion_provider.dkan_dataset_id:
+  type: mapping
+  label: 'DKAN dataset ID completion provider configuration'
+  mapping:
+    limit:
+      type: integer
+      label: 'Maximum number of suggestions'
+      nullable: true
