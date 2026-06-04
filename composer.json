@@ -6,7 +6,8 @@
   "require": {
     "php": ">=8.3",
     "drupal/dkan": "4.x-dev",
-    "drupal/mcp_server": "2.x-dev"
+    "drupal/mcp_server": "2.x-dev#5d6b54c6f2f29574248c56c768968438eac3be6c",
+    "mcp/sdk": "dev-main#0347dc85b4e577037f2fa177ac3fccd6aca7d8d7"
   },
   "require-dev": {
     "drupal/core": "^10.2 || ^11",

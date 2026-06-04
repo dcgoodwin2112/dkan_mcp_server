@@ -12,9 +12,9 @@ Provides three Drupal services that wrap DKAN's metastore, datastore, and search
 
 ## Consumers
 
-- `dkan_mcp` — exposes these methods as MCP tools.
+- `dkan_mcp_server` — bundles this module as a submodule and exposes these methods as MCP tools.
 - `dkan_drupal_ai_query` — wraps each method in a Drupal AI FunctionCall plugin.
-- `dkan_nl_query` — _deprecated_ in favor of `dkan_drupal_ai_query`; previously invoked these from a bespoke LLM agentic loop.
+- `dkan_mcp` — _superseded_ by `dkan_mcp_server`.
 
 ## Requirements
 
@@ -23,50 +23,18 @@ Provides three Drupal services that wrap DKAN's metastore, datastore, and search
 
 ## Installation
 
-1. Add as a Composer dependency. Use either a VCS repository (recommended for shared sites) or a local path repo (for development inside this monorepo):
+This module ships **bundled** inside the `dcgoodwin2112/dkan_mcp_server`
+Composer package at `modules/dkan_query_tools/`. There is no separate Composer
+package — install `dkan_mcp_server` (see its
+[README](../../README.md)) and this submodule lands on disk with it.
 
-   **VCS:**
-   ```json
-   {
-     "repositories": {
-       "dkan_query_tools": {
-         "type": "vcs",
-         "url": "https://github.com/dcgoodwin2112/dkan_query_tools.git"
-       }
-     },
-     "require": {
-       "dcgoodwin2112/dkan_query_tools": "dev-main"
-     }
-   }
-   ```
+It keeps its own machine name, `Drupal\dkan_query_tools\` namespace, and
+`dkan_query_tools.*` service IDs, and does **not** depend on its parent. Enable
+the query library on its own without starting the MCP server:
 
-   **Path repo:**
-   ```json
-   {
-     "repositories": {
-       "dkan_query_tools_local": {
-         "type": "path",
-         "url": "./docroot/modules/custom/dkan_query_tools",
-         "options": { "symlink": true }
-       }
-     },
-     "require": {
-       "dcgoodwin2112/dkan_query_tools": "@dev"
-     }
-   }
-   ```
-
-2. Resolve and install:
-
-   ```bash
-   composer update dcgoodwin2112/dkan_query_tools
-   ```
-
-3. Enable the module:
-
-   ```bash
-   drush en dkan_query_tools
-   ```
+```bash
+drush en dkan_query_tools
+```
 
 The three services become available immediately:
 
@@ -106,14 +74,14 @@ agent can read and self-correct from. See
 
 ## Tests
 
-Use the module-local PHPUnit runner:
+Standalone unit suite (stubs, no Drupal kernel), run under the site-level
+PHPUnit binary:
 
 ```bash
-cd docroot/modules/custom/dkan_query_tools && vendor/bin/phpunit
+ddev exec "cd docroot/modules/custom/dkan_mcp_server/modules/dkan_query_tools && ../../../../../../vendor/bin/phpunit"
 ```
 
 Unit tests use standalone stubs in `tests/stubs/` (no Drupal bootstrap). The
-test bootstrap registers only this module's PSR-4 namespaces — it does not load
-the module's `vendor/autoload.php` — so the suite also runs under the site-level
-PHPUnit binary (`../../../../vendor/bin/phpunit`) without mixing PHPUnit major
-versions.
+test bootstrap registers only this module's PSR-4 namespaces and loads the
+site-level Composer autoloader, so the suite runs under the site PHPUnit binary
+without mixing PHPUnit major versions.
