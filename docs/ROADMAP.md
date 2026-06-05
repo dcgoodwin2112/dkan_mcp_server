@@ -104,6 +104,72 @@ block this module.
 source for the free-text `topic` argument, and `harvest_id` completion is low
 value until requested. The `dataset_id` completer shipped.
 
+## Security review — triaged findings (Phase 1, 2026-06)
+
+A four-dimension adversarial review (authZ, info disclosure, DoS bounds, input
+handling) drove the Phase 1 hardening. **Fixed:** harvest SSRF / local-file-read
++ ETL-class allowlist in `HarvestTools::registerHarvest`; datastore error
+scrubbing (no raw SQL / table names to clients); DoS bounds (offset clamp, stats
+column cap, condition/column count guards); read-output redaction (internal node
+/revision IDs and absolute file paths in `get_dataset_info` / `resolve_resource`);
+and a `hook_requirements` warning for the Basic-auth posture. The items below were
+validated and intentionally **not** fixed in Phase 1, with rationale.
+
+- **No rate limiting `[deferred]`.** Expensive reads (datastore queries/stats,
+  `get_catalog`) are repeatable as fast as an authenticated client can send. Rate
+  limiting belongs at the deployment edge (reverse proxy) or via Drupal `flood`;
+  not imposed in-module so operators keep the policy choice. Recommend documenting
+  reverse-proxy throttling for `/mcp`. Revisit if an in-module limiter is wanted.
+- **Single read permission tier `[deferred]`.** `access mcp server` grants every
+  read (catalog, arbitrary datastore queries, harvest/queue/site status).
+  Deliberate, matching DKAN's public-data posture. A finer permission +
+  `checkAccess` override on diagnostic/harvest reads can be added if an operator
+  needs to restrict them.
+- **Harvest plan source URLs readable without a harvest permission `[deferred]`.**
+  `get_harvest_plan` / `_runs` / `_run_result` are read-gated only, so a reader can
+  enumerate source URLs and any secret an operator embedded in a plan. Mitigation:
+  operators must not embed secrets in plan URIs/headers; gating harvest reads
+  behind a permission is a future option.
+- **`get_site_status` version fingerprinting `[deferred]`.** Exposes DKAN/Drupal
+  versions and enabled DKAN modules to readers — standard for an operator status
+  tool. Coarsen or gate if the reader audience widens.
+- **`get_catalog` unpaginated full load `[deferred]`.** Loads the whole catalog
+  (descriptions already truncated). Acceptable at current sizes; add pagination or
+  a size guard if Phase 3 (perf) measures it as costly on a large catalog.
+- **Join group/sort/property canonicalization `[deferred]`.** `queryDatastoreJoin`
+  relies on DKAN's `query.json` schema plus core's compile-time `escapeField`
+  rather than the single-resource path's explicit canonicalization. Verified safe
+  on the installed core; add canonicalization for defense-in-depth if ever run on
+  an older core that did not escape group/order fields.
+- **`ToolAccessSubscriber` fail-open for unresolved tool names `[note]`.** A wire
+  name that does not resolve to a `ToolPluginInterface` is deferred (allowed), by
+  design. Latent only: every shipped tool resolves (enforced by
+  `ToolDiscoveryTest`, which instantiates all 38 via DI), so there is no live hole.
+- **Raw error messages in write/harvest/search services `[accepted]`.** Only the
+  datastore paths (which carry SQL / table identifiers) were scrubbed; write,
+  harvest, and search service errors are still returned to the authorized caller
+  to aid debugging — lower risk since they require write/permissioned access.
+- **Fetch-time harvest SSRF residual `[deferred]`.** The URI allowlist (scheme +
+  resolved-address checks) runs at both registration and run time, blocking the
+  direct vectors: file://, literal internal IPs (v4/v6, incl. integer/zone
+  forms), internal hostnames, and unresolved hosts (fail-closed). Two vectors
+  remain in DKAN's fetch itself, where the stock Guzzle client follows redirects
+  and re-resolves DNS:
+  1. **DNS rebinding** — DKAN re-resolves the host during the fetch, after the
+     run-time check, so a host can flip to an internal address in that window.
+  2. **HTTP redirects** — Guzzle follows redirects by default, so a public URL
+     can 302 to an internal target after the check passes.
+  Both require a harvest-write permission to reach. A complete fix needs a
+  hardened harvest HTTP client (redirects disabled or each Location re-validated,
+  plus resolved-IP pinning). DKAN does expose a downstream seam — `DataJson` and
+  the ETL `Factory` accept an injected `ClientInterface`, and
+  `HarvestService::getDkanHarvesterInstance()` is `protected` — so this *can* be
+  done in a `HarvestService` subclass injected only into `HarvestTools` (scoping
+  it to MCP runs without a site-wide override). Deferred because it duplicates
+  DKAN's harvester-construction internals (upstream-coupling risk) and is better
+  served by an upstream redirect/IP-pinning fix in DKAN's extractor; tracked as a
+  follow-up decision, not a blocker for the preflight hardening shipped here.
+
 ## Decision D1 — revisit triggers
 
 Adopting Tool API + `mcp_server_tool_bridge` (instead of native `#[Tool]`

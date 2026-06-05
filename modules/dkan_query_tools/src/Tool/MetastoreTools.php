@@ -351,11 +351,68 @@ class MetastoreTools {
       if (isset($info['notice'])) {
         return ['error' => $info['notice'] . ': ' . $uuid];
       }
-      return ['dataset_info' => $info];
+      return ['dataset_info' => $this->redactInternalInfo($info)];
     }
     catch (\Throwable $e) {
-      return ['error' => 'Failed to gather dataset info: ' . $e->getMessage()];
+      // The raw exception is not surfaced (it can carry internal paths/IDs).
+      return ['error' => 'Failed to gather dataset info for: ' . $uuid];
     }
+  }
+
+  /**
+   * Strips internal identifiers and absolute paths from dataset info.
+   *
+   * DatasetInfo::gather() exposes Drupal-internal entity IDs (node_id,
+   * revision_id) and absolute on-disk file paths that are not part of the
+   * public data model and aid an attacker. Recursively remove the IDs and
+   * reduce absolute filesystem paths to a basename, while leaving URLs and the
+   * public resource_id intact.
+   *
+   * @param array $info
+   *   The raw dataset info structure.
+   *
+   * @return array
+   *   The redacted structure.
+   */
+  private function redactInternalInfo(array $info): array {
+    $redacted = [];
+    foreach ($info as $key => $value) {
+      if ($key === 'node_id' || $key === 'revision_id') {
+        continue;
+      }
+      if (is_array($value)) {
+        $redacted[$key] = $this->redactInternalInfo($value);
+      }
+      elseif (($key === 'source_path' || $key === 'file_path') && is_string($value)) {
+        $redacted[$key] = $this->redactPath($value);
+      }
+      else {
+        $redacted[$key] = $value;
+      }
+    }
+    return $redacted;
+  }
+
+  /**
+   * Reduces an absolute filesystem path to its basename; leaves URIs intact.
+   *
+   * @param string $path
+   *   A file path or URI.
+   */
+  private function redactPath(string $path): string {
+    if ($path === '') {
+      return $path;
+    }
+    // URLs / stream wrappers (http://, s3://, public://) are not
+    // server-filesystem disclosures.
+    if (preg_match('#^[a-zA-Z][a-zA-Z0-9+.\-]*://#', $path) === 1) {
+      return $path;
+    }
+    // An absolute OS path leaks the server layout; keep only the file name.
+    if (str_starts_with($path, '/')) {
+      return basename($path);
+    }
+    return $path;
   }
 
 }

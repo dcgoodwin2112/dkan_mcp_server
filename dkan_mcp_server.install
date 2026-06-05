@@ -8,6 +8,81 @@
 use Drupal\Core\Config\FileStorage;
 
 /**
+ * Implements hook_requirements().
+ *
+ * Surfaces two release-relevant states on the status report:
+ * - The MCP HTTP endpoint's auth posture: HTTP Basic auth on /mcp sends
+ *   reusable credentials on every request and is meant for local development,
+ *   so warn while it is enabled. Turns a silent misconfig into a visible alert.
+ * - The pinned development-branch upstreams, as an informational reminder to
+ *   re-run the upstream-contract tests after a dependency bump.
+ */
+function dkan_mcp_server_requirements($phase) {
+  $requirements = [];
+  if ($phase !== 'runtime') {
+    return $requirements;
+  }
+
+  $severity_map = [
+    'ok' => REQUIREMENT_OK,
+    'info' => REQUIREMENT_INFO,
+    'warning' => REQUIREMENT_WARNING,
+  ];
+
+  $basic_auth = (bool) \Drupal::config('dkan_mcp_server.settings')->get('http_basic_auth');
+  $oauth_enabled = \Drupal::moduleHandler()->moduleExists('simple_oauth');
+  $auth_severity = _dkan_mcp_server_auth_severity($basic_auth);
+  if ($auth_severity === 'warning') {
+    $requirements['dkan_mcp_server_auth'] = [
+      'title' => t('DKAN MCP server authentication'),
+      'value' => $oauth_enabled
+        ? t('HTTP Basic auth enabled (OAuth also available)')
+        : t('HTTP Basic auth only'),
+      'description' => t('The MCP HTTP endpoint (/mcp) accepts HTTP Basic authentication, which transmits reusable credentials on every request and is intended for local development. For production, enable an OAuth provider (e.g. simple_oauth), disable Basic auth with <code>drush cset dkan_mcp_server.settings http_basic_auth false</code> followed by <code>drush cr</code>, and serve /mcp over HTTPS.'),
+      'severity' => $severity_map[$auth_severity],
+    ];
+  }
+  else {
+    $requirements['dkan_mcp_server_auth'] = [
+      'title' => t('DKAN MCP server authentication'),
+      'value' => $oauth_enabled ? t('OAuth (Basic auth disabled)') : t('Basic auth disabled'),
+      'severity' => $severity_map['ok'],
+    ];
+  }
+
+  $module_list = \Drupal::service('extension.list.module');
+  $mcp_version = 'dev';
+  if ($module_list->exists('mcp_server')) {
+    $mcp_version = $module_list->getExtensionInfo('mcp_server')['version'] ?? 'dev';
+  }
+  $requirements['dkan_mcp_server_dependencies'] = [
+    'title' => t('DKAN MCP server dependencies'),
+    'value' => t('Tracking development releases'),
+    'description' => t('dkan_mcp_server pins drupal/mcp_server and mcp/sdk to specific development-branch commits. After updating those packages, run the kernel ToolDiscoveryTest and UpstreamContractTest to confirm the upstream contract still holds. Installed mcp_server: @version.', ['@version' => $mcp_version]),
+    'severity' => $severity_map['info'],
+  ];
+
+  return $requirements;
+}
+
+/**
+ * Decides the auth-posture requirement severity for the status report.
+ *
+ * Extracted so the security-relevant decision is unit-testable without a
+ * bootstrapped container. Basic auth on the network endpoint is the risk, so it
+ * warns whenever Basic auth is enabled, regardless of any OAuth provider.
+ *
+ * @param bool $basic_auth
+ *   Whether HTTP Basic auth is enabled on the /mcp route.
+ *
+ * @return string
+ *   One of 'ok' or 'warning'.
+ */
+function _dkan_mcp_server_auth_severity(bool $basic_auth): string {
+  return $basic_auth ? 'warning' : 'ok';
+}
+
+/**
  * Curated MCP prompt config IDs this module ships in config/install.
  *
  * @return string[]

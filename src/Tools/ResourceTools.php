@@ -59,7 +59,7 @@ class ResourceTools {
           if ($resource) {
             $perspectives[] = [
               'perspective' => $perspectiveName,
-              'file_path' => $resource->getFilePath(),
+              'file_path' => $this->redactPath($resource->getFilePath()),
               'mime_type' => $resource->getMimeType(),
             ];
           }
@@ -96,8 +96,32 @@ class ResourceTools {
       ];
     }
     catch (\Exception $e) {
-      return ['error' => $e->getMessage()];
+      // Do not surface the raw exception (it can carry internal paths/IDs).
+      return ['error' => 'Failed to resolve resource: ' . $id];
     }
+  }
+
+  /**
+   * Reduces an absolute filesystem path to its basename; leaves URIs intact.
+   *
+   * The local_file perspective's path is an absolute on-disk path that leaks
+   * the server layout; URLs and stream wrappers (the source/local_url
+   * perspectives) are part of the public data model and pass through unchanged.
+   *
+   * @param string $path
+   *   A file path or URI.
+   */
+  protected function redactPath(string $path): string {
+    if ($path === '') {
+      return $path;
+    }
+    if (preg_match('#^[a-zA-Z][a-zA-Z0-9+.\-]*://#', $path) === 1) {
+      return $path;
+    }
+    if (str_starts_with($path, '/')) {
+      return basename($path);
+    }
+    return $path;
   }
 
   /**
