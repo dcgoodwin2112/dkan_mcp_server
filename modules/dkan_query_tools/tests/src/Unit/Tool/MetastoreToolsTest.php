@@ -382,18 +382,26 @@ class MetastoreToolsTest extends TestCase {
   }
 
   /**
-   * Returns gathered dataset info including the latest revision details.
+   * Returns dataset info but redacts internal IDs and absolute file paths.
    */
   public function testGetDatasetInfo(): void {
     $info = [
       'latest_revision' => [
         'uuid' => 'abc-123',
+        'node_id' => 42,
+        'revision_id' => 99,
         'title' => 'Test Dataset',
         'distributions' => [
           [
             'distribution_uuid' => 'dist-1',
             'resource_id' => 'res-hash',
             'resource_version' => '1234567890',
+            'source_path' => '/var/www/html/sites/default/files/uploaded/secret.csv',
+          ],
+          [
+            'distribution_uuid' => 'dist-2',
+            'resource_id' => 'res-hash-2',
+            'source_path' => 'https://example.com/public/data.csv',
           ],
         ],
       ],
@@ -405,23 +413,34 @@ class MetastoreToolsTest extends TestCase {
     $tools = $this->createTools($metastore, $datasetInfo);
     $result = $tools->getDatasetInfo('abc-123');
 
-    $this->assertArrayHasKey('dataset_info', $result);
-    $this->assertEquals('abc-123', $result['dataset_info']['latest_revision']['uuid']);
+    $revision = $result['dataset_info']['latest_revision'];
+    // Public fields are preserved.
+    $this->assertEquals('abc-123', $revision['uuid']);
+    $this->assertEquals('res-hash', $revision['distributions'][0]['resource_id']);
+    // Internal Drupal entity IDs are stripped.
+    $this->assertArrayNotHasKey('node_id', $revision);
+    $this->assertArrayNotHasKey('revision_id', $revision);
+    // Absolute filesystem paths are reduced to a basename; URLs are kept.
+    $this->assertSame('secret.csv', $revision['distributions'][0]['source_path']);
+    $this->assertSame('https://example.com/public/data.csv', $revision['distributions'][1]['source_path']);
   }
 
   /**
-   * Catches a thrown error and returns it as an error payload.
+   * Catches a thrown error and returns a generic, non-leaking payload.
    */
   public function testGetDatasetInfoCatchesError(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $datasetInfo = $this->createMock(DatasetInfo::class);
-    $datasetInfo->method('gather')->willThrowException(new \TypeError('type error'));
+    $datasetInfo->method('gather')->willThrowException(
+      new \TypeError('type error in /var/www/html/internal/path.php'),
+    );
 
     $tools = $this->createTools($metastore, $datasetInfo);
     $result = $tools->getDatasetInfo('abc-123');
 
     $this->assertArrayHasKey('error', $result);
-    $this->assertStringContainsString('type error', $result['error']);
+    $this->assertStringContainsString('Failed to gather dataset info', $result['error']);
+    $this->assertStringNotContainsString('/var/www', $result['error']);
   }
 
   /**

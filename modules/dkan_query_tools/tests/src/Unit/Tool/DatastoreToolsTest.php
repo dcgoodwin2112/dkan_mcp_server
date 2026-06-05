@@ -110,16 +110,95 @@ class DatastoreToolsTest extends TestCase {
   }
 
   /**
-   * Tests a query exception is returned as a structured error payload.
+   * Tests an oversized offset is clamped to the deep-pagination ceiling.
+   */
+  public function testQueryDatastoreClampOffset(): void {
+    $queryService = $this->createMock(Query::class);
+    $queryService->method('runQuery')->willReturn(new RootedJsonData('{"results":[],"count":0}'));
+
+    $tools = $this->createTools(query: $queryService);
+    $result = $tools->queryDatastore('test', offset: 99999999);
+    $this->assertSame(100000, $result['offset']);
+  }
+
+  /**
+   * Tests an oversized column list is rejected before query assembly.
+   */
+  public function testQueryDatastoreRejectsTooManyColumns(): void {
+    $tools = $this->createTools();
+    $columns = implode(',', array_map(static fn(int $i): string => "c$i", range(1, 201)));
+    $result = $tools->queryDatastore('test', columns: $columns);
+    $this->assertArrayHasKey('error', $result);
+    $this->assertStringContainsString('Too many columns', $result['error']);
+  }
+
+  /**
+   * Tests an oversized condition list is rejected before query assembly.
+   */
+  public function testQueryDatastoreRejectsTooManyConditions(): void {
+    $tools = $this->createTools();
+    $conditions = json_encode(array_map(
+      static fn(int $i): array => ['property' => 'c', 'value' => $i, 'operator' => '='],
+      range(1, 101),
+    ));
+    $result = $tools->queryDatastore('test', conditions: $conditions);
+    $this->assertArrayHasKey('error', $result);
+    $this->assertStringContainsString('Too many conditions', $result['error']);
+  }
+
+  /**
+   * Tests an oversized expression list is rejected (single-resource query).
+   */
+  public function testQueryDatastoreRejectsTooManyExpressions(): void {
+    $storage = $this->createMock(DatabaseTableInterface::class);
+    $storage->method('getSchema')->willReturn(['fields' => ['c' => ['type' => 'int']]]);
+    $datastore = $this->createMock(DatastoreService::class);
+    $datastore->method('getStorage')->willReturn($storage);
+
+    $tools = $this->createTools(datastore: $datastore);
+    $expressions = json_encode(array_map(
+      static fn(int $i): array => ['operator' => 'sum', 'operands' => ['c'], 'alias' => "a$i"],
+      range(1, 201),
+    ));
+    $result = $tools->queryDatastore('test__1', expressions: $expressions);
+    $this->assertArrayHasKey('error', $result);
+    $this->assertStringContainsString('Too many expressions', $result['error']);
+  }
+
+  /**
+   * Tests an oversized expression list is rejected (join query).
+   */
+  public function testQueryDatastoreJoinRejectsTooManyExpressions(): void {
+    $tools = $this->createTools();
+    $expressions = json_encode(array_map(
+      static fn(int $i): array => ['operator' => 'sum', 'operands' => ['c'], 'alias' => "a$i"],
+      range(1, 201),
+    ));
+    $result = $tools->queryDatastoreJoin('a__1', 'b__1', 'c=c', expressions: $expressions);
+    $this->assertArrayHasKey('error', $result);
+    $this->assertStringContainsString('Too many expressions', $result['error']);
+  }
+
+  /**
+   * Tests a query exception is returned as a generic, non-leaking error.
+   *
+   * The raw exception message must not reach the client (it can carry SQL
+   * fragments and the datastore table name); only a generic message plus the
+   * resource id are returned.
    */
   public function testQueryDatastoreError(): void {
     $queryService = $this->createMock(Query::class);
-    $queryService->method('runQuery')->willThrowException(new \Exception('Resource not found'));
+    $queryService->method('runQuery')->willThrowException(
+      new \Exception("SQLSTATE[42S02]: Base table or view not found: datastore_abc123def"),
+    );
 
     $tools = $this->createTools(query: $queryService);
     $result = $tools->queryDatastore('nonexistent');
     $this->assertArrayHasKey('error', $result);
-    $this->assertStringContainsString('Resource not found', $result['error']);
+    $this->assertStringContainsString('datastore query could not be completed', $result['error']);
+    // The raw DB message and table identifier must not leak to the client.
+    $this->assertStringNotContainsString('SQLSTATE', $result['error']);
+    $this->assertStringNotContainsString('datastore_abc123def', $result['error']);
     $this->assertSame('nonexistent', $result['resource_id']);
   }
 
@@ -1389,17 +1468,21 @@ class DatastoreToolsTest extends TestCase {
   }
 
   /**
-   * Tests a join query exception is returned as a structured error.
+   * Tests a join query exception is returned as a generic, non-leaking error.
    */
   public function testQueryDatastoreJoinError(): void {
     $queryService = $this->createMock(Query::class);
-    $queryService->method('runQuery')->willThrowException(new \Exception('Resource not found'));
+    $queryService->method('runQuery')->willThrowException(
+      new \Exception('SQLSTATE[42S02]: table datastore_join_secret not found'),
+    );
 
     $tools = $this->createTools(query: $queryService);
     $result = $tools->queryDatastoreJoin('bad__1', 'bad__2', 'col=col');
 
     $this->assertArrayHasKey('error', $result);
-    $this->assertStringContainsString('Resource not found', $result['error']);
+    $this->assertStringContainsString('could not be completed', $result['error']);
+    $this->assertStringNotContainsString('datastore_join_secret', $result['error']);
+    $this->assertStringNotContainsString('SQLSTATE', $result['error']);
   }
 
   /**
@@ -1987,17 +2070,18 @@ class DatastoreToolsTest extends TestCase {
   }
 
   /**
-   * Tests searchColumns returns an error when the metastore call throws.
+   * Tests searchColumns returns a generic, non-leaking error when it throws.
    */
   public function testSearchColumnsError(): void {
     $metastore = $this->createMock(MetastoreService::class);
-    $metastore->method('count')->willThrowException(new \Exception('Service unavailable'));
+    $metastore->method('count')->willThrowException(new \Exception('Service unavailable at /var/secret'));
 
     $tools = $this->createTools(metastore: $metastore);
     $result = $tools->searchColumns('test');
 
     $this->assertArrayHasKey('error', $result);
-    $this->assertStringContainsString('Service unavailable', $result['error']);
+    $this->assertStringContainsString('column-search operation failed', $result['error']);
+    $this->assertStringNotContainsString('/var/secret', $result['error']);
   }
 
   /**
@@ -2097,15 +2181,16 @@ class DatastoreToolsTest extends TestCase {
   }
 
   /**
-   * Tests sampleRows returns an error for an unknown resource.
+   * Tests sampleRows returns a generic, non-leaking error for a bad resource.
    */
   public function testSampleRowsErrorOnUnknownResource(): void {
     $datastore = $this->createMock(DatastoreService::class);
-    $datastore->method('getStorage')->willThrowException(new \Exception('No such resource'));
+    $datastore->method('getStorage')->willThrowException(new \Exception('No such resource datastore_xyz'));
     $tools = $this->createTools(datastore: $datastore);
     $result = $tools->sampleRows('bad__id');
     $this->assertArrayHasKey('error', $result);
-    $this->assertStringContainsString('No such resource', $result['error']);
+    $this->assertStringContainsString('sample operation failed', $result['error']);
+    $this->assertStringNotContainsString('datastore_xyz', $result['error']);
   }
 
   /**
@@ -2303,6 +2388,27 @@ class DatastoreToolsTest extends TestCase {
   }
 
   /**
+   * Tests get_datastore_stats caps analyzed columns and flags truncation.
+   *
+   * Each analyzed column adds a COUNT(DISTINCT), so a wide table is a DoS
+   * vector; the result is capped and the truncation is signalled.
+   */
+  public function testGetDatastoreStatsCapsColumns(): void {
+    $fields = ['record_number' => ['type' => 'serial']];
+    for ($i = 1; $i <= 60; $i++) {
+      $fields["col$i"] = ['type' => 'text'];
+    }
+    $tools = $this->createStatsTools($fields, ['total_rows' => 10]);
+
+    $result = $tools->getDatastoreStats('abc__123');
+
+    $this->assertCount(50, $result['columns']);
+    $this->assertTrue($result['columns_truncated']);
+    $this->assertSame(50, $result['columns_analyzed']);
+    $this->assertSame(60, $result['total_columns']);
+  }
+
+  /**
    * Tests getDatastoreStats limits output to the requested column.
    */
   public function testGetDatastoreStatsFilteredColumns(): void {
@@ -2347,17 +2453,18 @@ class DatastoreToolsTest extends TestCase {
   }
 
   /**
-   * Tests getDatastoreStats returns an error for an invalid resource.
+   * Tests getDatastoreStats returns a generic, non-leaking error for a bad id.
    */
   public function testGetDatastoreStatsInvalidResource(): void {
     $datastore = $this->createMock(DatastoreService::class);
-    $datastore->method('getStorage')->willThrowException(new \Exception('Resource not found'));
+    $datastore->method('getStorage')->willThrowException(new \Exception('Resource not found in datastore_priv'));
 
     $tools = $this->createTools(datastore: $datastore);
     $result = $tools->getDatastoreStats('bad__id');
 
     $this->assertArrayHasKey('error', $result);
-    $this->assertStringContainsString('Resource not found', $result['error']);
+    $this->assertStringContainsString('statistics operation failed', $result['error']);
+    $this->assertStringNotContainsString('datastore_priv', $result['error']);
   }
 
   /**

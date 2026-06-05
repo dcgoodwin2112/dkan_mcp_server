@@ -7,6 +7,7 @@ namespace Drupal\Tests\dkan_mcp_server\Unit\Tools;
 use Drupal\dkan_harvest\Entity\HarvestRunRepository;
 use Drupal\dkan_harvest\HarvestService;
 use Drupal\dkan_mcp_server\Tools\HarvestTools;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
@@ -112,6 +113,118 @@ final class HarvestToolsTest extends TestCase {
 
     $this->assertArrayHasKey('error', $result);
     $this->assertStringContainsString('Harvest plan not found', $result['error']);
+  }
+
+  /**
+   * A plan with stock ETL classes and a public source URI is registered.
+   */
+  public function testRegisterHarvestAcceptsValidPlan(): void {
+    $harvest = $this->createMock(HarvestService::class);
+    // The plan must reach DKAN exactly once.
+    $harvest->expects($this->once())->method('registerHarvest');
+
+    $tools = new HarvestTools($harvest, new NullLogger());
+    // 8.8.8.8 is a public IP literal: no DNS lookup, not private/reserved.
+    $plan = json_encode([
+      'identifier' => 'p1',
+      'extract' => [
+        'type' => '\\Drupal\\dkan_harvest\\ETL\\Extract\\DataJson',
+        'uri' => 'http://8.8.8.8/data.json',
+      ],
+      'load' => ['type' => '\\Drupal\\dkan_harvest\\Load\\Dataset'],
+      'transforms' => ['\\Drupal\\dkan_harvest\\Transform\\ResourceImporter'],
+    ]);
+
+    $result = $tools->registerHarvest($plan);
+    $this->assertSame('success', $result['status']);
+    $this->assertSame('p1', $result['plan_id']);
+  }
+
+  /**
+   * Unsafe plans are rejected before reaching DKAN.
+   *
+   * Covers SSRF / local-file-read source URIs and ETL class names outside the
+   * stock-DKAN allowlist (the arbitrary-class-instantiation vector).
+   */
+  #[DataProvider('unsafePlans')]
+  public function testRegisterHarvestRejectsUnsafePlan(array $plan, string $fragment): void {
+    $harvest = $this->createMock(HarvestService::class);
+    // A rejected plan must never reach DKAN's registration.
+    $harvest->expects($this->never())->method('registerHarvest');
+
+    $tools = new HarvestTools($harvest, new NullLogger());
+    $result = $tools->registerHarvest(json_encode($plan));
+
+    $this->assertArrayHasKey('error', $result);
+    $this->assertStringContainsString($fragment, $result['error']);
+  }
+
+  /**
+   * Running a harvest re-validates the stored plan and refuses an unsafe URI.
+   */
+  public function testRunHarvestRevalidatesStoredPlan(): void {
+    $harvest = $this->createMock(HarvestService::class);
+    // A plan that resolved as public at registration now points at loopback.
+    $harvest->method('getHarvestPlanObject')->willReturn((object) [
+      'identifier' => 'p1',
+      'extract' => (object) [
+        'type' => '\\Drupal\\dkan_harvest\\ETL\\Extract\\DataJson',
+        'uri' => 'http://127.0.0.1/data.json',
+      ],
+      'load' => (object) ['type' => '\\Drupal\\dkan_harvest\\Load\\Dataset'],
+    ]);
+    // The unsafe plan must never reach DKAN's run.
+    $harvest->expects($this->never())->method('runHarvest');
+
+    $tools = new HarvestTools($harvest, new NullLogger());
+    $result = $tools->runHarvest('p1');
+
+    $this->assertArrayHasKey('error', $result);
+    $this->assertStringContainsString('non-public', $result['error']);
+  }
+
+  /**
+   * Unsafe harvest plans: [plan array, expected error fragment].
+   */
+  public static function unsafePlans(): array {
+    $extract = static fn(string $uri, string $type = '\\Drupal\\dkan_harvest\\ETL\\Extract\\DataJson'): array =>
+      ['type' => $type, 'uri' => $uri];
+    $load = ['type' => '\\Drupal\\dkan_harvest\\Load\\Dataset'];
+    $plan = static fn(array $ex, array $ld, ?array $tr = NULL): array => array_filter([
+      'identifier' => 'p1',
+      'extract' => $ex,
+      'load' => $ld,
+      'transforms' => $tr,
+    ], static fn($v): bool => $v !== NULL);
+
+    return [
+      'file scheme (local file read)' => [$plan($extract('file:///etc/passwd'), $load), 'scheme'],
+      'loopback ip' => [$plan($extract('http://127.0.0.1/x'), $load), 'non-public'],
+      'link-local metadata' => [$plan($extract('http://169.254.169.254/latest/meta-data/'), $load), 'non-public'],
+      'private ip' => [$plan($extract('http://10.0.0.5/x'), $load), 'non-public'],
+      'ipv6 loopback' => [$plan($extract('http://[::1]/x'), $load), 'non-public'],
+      'ipv6 link-local' => [$plan($extract('http://[fe80::1]/x'), $load), 'non-public'],
+      'ipv6 unique-local' => [$plan($extract('http://[fc00::1]/x'), $load), 'non-public'],
+      'ipv6 zone id (encoded)' => [$plan($extract('http://[fe80::1%25eth0]/x'), $load), 'non-public'],
+      'cgnat shared space' => [$plan($extract('http://100.64.1.1/x'), $load), 'non-public'],
+      'localhost name' => [$plan($extract('http://localhost/x'), $load), 'non-public'],
+      'relative uri (no scheme/host)' => [$plan($extract('/local.json'), $load), 'absolute http'],
+      'disallowed extract class' => [$plan($extract('http://8.8.8.8/x', '\\Evil\\Extractor'), $load), 'extract.type'],
+      'disallowed load class' => [$plan($extract('http://8.8.8.8/x'), ['type' => '\\Evil\\Loader']), 'load.type'],
+      'disallowed transform class' => [$plan($extract('http://8.8.8.8/x'), $load, ['\\Evil\\Transform']), 'transforms'],
+      // An associative array JSON-encodes to an object, which DKAN's Factory
+      // would still iterate; it must be rejected as a non-array.
+      'object-shaped transforms' => [
+        $plan($extract('http://8.8.8.8/x'), $load, ['x' => '\\Evil\\Transform']),
+        'must be an array',
+      ],
+      // Integer IPv4 notation: 2130706433 == 127.0.0.1. It does not resolve as
+      // a DNS name here, so the fail-closed path rejects it.
+      'integer ipv4 loopback' => [
+        $plan($extract('http://2130706433/x'), $load),
+        'non-public',
+      ],
+    ];
   }
 
 }

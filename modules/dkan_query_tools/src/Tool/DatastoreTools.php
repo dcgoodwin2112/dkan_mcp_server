@@ -20,6 +20,33 @@ class DatastoreTools {
   protected const MAX_DATASETS = 200;
 
   /**
+   * Hard ceiling on the OFFSET a datastore query may request.
+   *
+   * A deep offset forces the DB to scan and discard every preceding row, so a
+   * huge value is a cheap-to-send / expensive-to-serve amplifier. Anything
+   * beyond this is clamped.
+   */
+  protected const MAX_OFFSET = 100000;
+
+  /**
+   * Max columns / groupings a single datastore query may reference.
+   */
+  protected const MAX_QUERY_PROPERTIES = 200;
+
+  /**
+   * Max condition nodes (counted recursively) a single query may carry.
+   */
+  protected const MAX_CONDITIONS = 100;
+
+  /**
+   * Max columns get_datastore_stats will aggregate in one call.
+   *
+   * Each analyzed column adds a COUNT(DISTINCT) (a per-column sort/hash), so an
+   * uncapped wide table is a DoS vector; beyond this the result is truncated.
+   */
+  protected const MAX_STATS_COLUMNS = 50;
+
+  /**
    * Per-instance memo of resourceId → dictionary lookup result.
    *
    * Values: array with [identifier, url, fields] on a hit; FALSE for a
@@ -96,7 +123,7 @@ class DatastoreTools {
     int $maxLimit = 500,
   ): array {
     $limit = min(max($limit, 1), max(1, $maxLimit));
-    $offset = max($offset, 0);
+    $offset = min(max($offset, 0), self::MAX_OFFSET);
 
     $query = [
       'resources' => [['id' => $resourceId, 'alias' => 't']],
@@ -110,10 +137,16 @@ class DatastoreTools {
     $properties = [];
     if ($columns) {
       $properties = array_map('trim', explode(',', $columns));
+      if (count($properties) > self::MAX_QUERY_PROPERTIES) {
+        return ['error' => 'Too many columns requested (max ' . self::MAX_QUERY_PROPERTIES . ').'];
+      }
       $properties = $this->canonicalizeColumnNames($resourceId, $properties);
     }
 
     $groupList = $groupings ? array_map('trim', explode(',', $groupings)) : [];
+    if (count($groupList) > self::MAX_QUERY_PROPERTIES) {
+      return ['error' => 'Too many groupings requested (max ' . self::MAX_QUERY_PROPERTIES . ').'];
+    }
     if ($groupList) {
       $groupList = $this->canonicalizeColumnNames($resourceId, $groupList);
     }
@@ -153,6 +186,9 @@ class DatastoreTools {
       $parsed = json_decode($conditions, TRUE);
       if (!is_array($parsed) || !array_is_list($parsed)) {
         return ['error' => 'Invalid conditions: must be a JSON array of condition objects, e.g. [{"property":"col","value":"val","operator":"="}]'];
+      }
+      if ($this->countConditions($parsed) > self::MAX_CONDITIONS) {
+        return ['error' => 'Too many conditions (max ' . self::MAX_CONDITIONS . ').'];
       }
       $parsed = $this->canonicalizeConditionProperties($parsed, $resourceId);
       $parsed = self::canonicalizeOperators($parsed);
@@ -243,7 +279,7 @@ class DatastoreTools {
         '@id' => $resourceId,
         '@error' => $e->getMessage(),
       ]);
-      return ['error' => $e->getMessage()];
+      return $this->operationError('sample');
     }
   }
 
@@ -307,7 +343,7 @@ class DatastoreTools {
         '@col' => $column,
         '@error' => $e->getMessage(),
       ]);
-      return ['error' => $e->getMessage()];
+      return $this->operationError('distinct-values');
     }
   }
 
@@ -373,7 +409,11 @@ class DatastoreTools {
       return $result;
     }
     catch (\Exception $e) {
-      return ['error' => $e->getMessage()];
+      $this->logger->error('Datastore schema lookup failed for @id: @error', [
+        '@id' => $resourceId,
+        '@error' => $e->getMessage(),
+      ]);
+      return $this->operationError('schema');
     }
   }
 
@@ -636,7 +676,7 @@ class DatastoreTools {
     int $maxLimit = 500,
   ): array {
     $limit = min(max($limit, 1), max(1, $maxLimit));
-    $offset = max($offset, 0);
+    $offset = min(max($offset, 0), self::MAX_OFFSET);
 
     $query = [
       'resources' => [
@@ -660,11 +700,17 @@ class DatastoreTools {
     // Parse columns with resource qualification.
     $properties = [];
     if ($columns) {
+      if (count(explode(',', $columns)) > self::MAX_QUERY_PROPERTIES) {
+        return ['error' => 'Too many columns requested (max ' . self::MAX_QUERY_PROPERTIES . ').'];
+      }
       $properties = $this->parseQualifiedColumns($columns);
     }
 
     // Parse groupings with resource qualification.
     $groupList = $groupings ? array_map('trim', explode(',', $groupings)) : [];
+    if (count($groupList) > self::MAX_QUERY_PROPERTIES) {
+      return ['error' => 'Too many groupings requested (max ' . self::MAX_QUERY_PROPERTIES . ').'];
+    }
     if ($groupList) {
       $query['groupings'] = array_map(
         fn(string $col) => $this->parseQualifiedField($col),
@@ -713,6 +759,9 @@ class DatastoreTools {
       $parsed = json_decode($conditions, TRUE);
       if (!is_array($parsed) || !array_is_list($parsed)) {
         return ['error' => 'Invalid conditions: must be a JSON array of condition objects.'];
+      }
+      if ($this->countConditions($parsed) > self::MAX_CONDITIONS) {
+        return ['error' => 'Too many conditions (max ' . self::MAX_CONDITIONS . ').'];
       }
       $parsed = self::canonicalizeOperators($parsed);
       if ($opError = self::validateOperators($parsed)) {
@@ -1026,7 +1075,7 @@ class DatastoreTools {
     }
     catch (\Exception $e) {
       $this->logger->error('Column search failed: @error', ['@error' => $e->getMessage()]);
-      return ['error' => $e->getMessage()];
+      return $this->operationError('column-search');
     }
   }
 
@@ -1063,6 +1112,16 @@ class DatastoreTools {
         $fields = array_intersect_key($fields, array_flip($requested));
       }
 
+      // Cap the number of analyzed columns: each adds a COUNT(DISTINCT), so a
+      // wide table is otherwise an unbounded per-call scan. Truncate (rather
+      // than reject) so the tool stays usable; the client can pass `columns` to
+      // target the rest.
+      $totalColumns = count($fields);
+      $columnsTruncated = $totalColumns > self::MAX_STATS_COLUMNS;
+      if ($columnsTruncated) {
+        $fields = array_slice($fields, 0, self::MAX_STATS_COLUMNS, TRUE);
+      }
+
       $tableName = $storage->getTableName();
       $query = $this->database->select($tableName, 't');
       $query->addExpression('COUNT(*)', 'total_rows');
@@ -1091,23 +1150,29 @@ class DatastoreTools {
           'type' => $definition['type'] ?? 'unknown',
           'null_count' => $totalRows - $nonNull,
           'distinct_count' => (int) ($row["{$name}__distinct"] ?? 0),
-          'min' => $row["{$name}__min"],
-          'max' => $row["{$name}__max"],
+          'min' => $row["{$name}__min"] ?? NULL,
+          'max' => $row["{$name}__max"] ?? NULL,
         ];
       }
 
-      return [
+      $response = [
         'resource_id' => $resourceId,
         'total_rows' => $totalRows,
         'columns' => $columnStats,
       ];
+      if ($columnsTruncated) {
+        $response['columns_truncated'] = TRUE;
+        $response['columns_analyzed'] = self::MAX_STATS_COLUMNS;
+        $response['total_columns'] = $totalColumns;
+      }
+      return $response;
     }
     catch (\Throwable $e) {
       $this->logger->error('Stats query failed for @id: @error', [
         '@id' => $resourceId,
         '@error' => $e->getMessage(),
       ]);
-      return ['error' => $e->getMessage()];
+      return $this->operationError('statistics');
     }
   }
 
@@ -1121,6 +1186,12 @@ class DatastoreTools {
     $parsed = json_decode($expressionsJson, TRUE);
     if (!is_array($parsed) || !array_is_list($parsed)) {
       return ['error' => 'Invalid expressions: must be a JSON array of expression objects, e.g. [{"operator":"sum","operands":["column"],"alias":"total"}]'];
+    }
+    // Bound the expression count before assembling SQL: each expression adds to
+    // the select list and (for aggregates) to the per-call work, so an
+    // unbounded list is a DoS vector even though rows stay capped.
+    if (count($parsed) > self::MAX_QUERY_PROPERTIES) {
+      return ['error' => 'Too many expressions (max ' . self::MAX_QUERY_PROPERTIES . ').'];
     }
 
     $aggregateOperators = ['sum', 'count', 'avg', 'max', 'min'];
@@ -1483,13 +1554,56 @@ class DatastoreTools {
         'column' => $column,
         'available_columns' => $this->getSchemaColumnNames($resourceId),
         'resource_id' => $resourceId,
-        'message' => $message,
+        // Derived from the client's own column input — safe to echo. The raw DB
+        // message is intentionally not included (it can carry SQL/table names).
+        'message' => $column === '(unknown)'
+          ? 'A referenced column does not exist for this resource.'
+          : "Column '{$column}' does not exist for this resource.",
       ];
     }
+    // Never surface the raw exception: DB driver messages can leak SQL
+    // fragments and the datastore table name. Callers log the detail.
     return [
-      'error' => $message,
+      'error' => 'The datastore query could not be completed (invalid query or datastore error).',
       'resource_id' => $resourceId,
     ];
+  }
+
+  /**
+   * Generic client-facing error payload for a failed datastore operation.
+   *
+   * The raw exception can carry SQL fragments, the datastore table name, or DB
+   * driver text, so it is logged (not returned). The label names the operation
+   * so the client gets actionable-but-safe feedback.
+   *
+   * @param string $label
+   *   Short operation label, e.g. "sample" or "statistics".
+   *
+   * @return array
+   *   The error payload.
+   */
+  private function operationError(string $label): array {
+    return ['error' => "The datastore {$label} operation failed; see the server log for details."];
+  }
+
+  /**
+   * Counts condition nodes recursively, including nested condition groups.
+   *
+   * Used to bound client-supplied condition trees (breadth and nesting) before
+   * any canonicalization or query assembly runs.
+   *
+   * @param array $conditions
+   *   A decoded list of condition objects/groups.
+   */
+  private function countConditions(array $conditions): int {
+    $count = 0;
+    foreach ($conditions as $cond) {
+      $count++;
+      if (is_array($cond) && isset($cond['conditions']) && is_array($cond['conditions'])) {
+        $count += $this->countConditions($cond['conditions']);
+      }
+    }
+    return $count;
   }
 
   /**
