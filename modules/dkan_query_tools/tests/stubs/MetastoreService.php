@@ -19,6 +19,13 @@ class MetastoreService {
   /**
    * {@inheritdoc}
    */
+  public function getIdentifiers(string $schema_id, ?int $start = NULL, ?int $length = NULL, $unpublished = FALSE): array {
+    return [];
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function get(string $schema_id, string $identifier, bool $published = TRUE): RootedJsonData {
     return new RootedJsonData('{}');
   }

@@ -31,12 +31,11 @@ final class DkanDatasetIdCompletionProviderTest extends TestCase {
   }
 
   /**
-   * A metastore stub whose listDatasets returns the given identifiers.
+   * A metastore stub whose listDatasetIdentifiers returns the given ids.
    */
   private function metastoreListing(array $identifiers): MetastoreTools {
-    $rows = array_map(static fn (string $id): array => ['identifier' => $id], $identifiers);
     $metastore = $this->createMock(MetastoreTools::class);
-    $metastore->method('listDatasets')->willReturn(['datasets' => $rows]);
+    $metastore->method('listDatasetIdentifiers')->willReturn(['identifiers' => $identifiers]);
     return $metastore;
   }
 
@@ -103,7 +102,7 @@ final class DkanDatasetIdCompletionProviderTest extends TestCase {
    */
   public function testServiceFailureReturnsEmpty(): void {
     $metastore = $this->createMock(MetastoreTools::class);
-    $metastore->method('listDatasets')->willThrowException(new \RuntimeException('boom'));
+    $metastore->method('listDatasetIdentifiers')->willThrowException(new \RuntimeException('boom'));
     $provider = $this->provider($metastore, $this->createMock(SearchTools::class));
 
     $this->assertSame([], $provider->getCompletions('', []));
