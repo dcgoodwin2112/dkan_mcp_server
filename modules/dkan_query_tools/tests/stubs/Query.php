@@ -9,6 +9,9 @@ use RootedData\RootedJsonData;
  */
 class Query {
 
+  /**
+   * {@inheritdoc}
+   */
   public function runQuery(DatastoreQuery $datastoreQuery) {
     return new RootedJsonData('{"results":[],"count":0,"schema":{}}');
   }

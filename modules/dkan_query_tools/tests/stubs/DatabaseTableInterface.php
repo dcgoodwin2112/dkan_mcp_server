@@ -7,8 +7,14 @@ namespace Drupal\dkan_common\Storage;
  */
 interface DatabaseTableInterface {
 
+  /**
+   * {@inheritdoc}
+   */
   public function getSchema(): array;
 
+  /**
+   * {@inheritdoc}
+   */
   public function getTableName(): string;
 
 }

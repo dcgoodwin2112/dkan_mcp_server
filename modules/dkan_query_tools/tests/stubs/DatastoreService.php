@@ -9,18 +9,30 @@ use Drupal\dkan_common\Storage\DatabaseTableInterface;
  */
 class DatastoreService {
 
+  /**
+   * {@inheritdoc}
+   */
   public function getStorage(string $identifier, $version = NULL): DatabaseTableInterface {
     throw new \RuntimeException('Not implemented');
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function summary($identifier) {
     return [];
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function import(string $identifier, bool $deferred = FALSE, $version = NULL) {
     return [];
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function drop(string $identifier, ?string $version = NULL): void {
   }
 

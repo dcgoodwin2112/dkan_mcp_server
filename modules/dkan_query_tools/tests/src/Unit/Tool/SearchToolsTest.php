@@ -6,12 +6,21 @@ use Drupal\dkan_metastore_search\Search;
 use Drupal\dkan_query_tools\Tool\SearchTools;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * Tests the SearchTools dataset search adapter.
+ */
 class SearchToolsTest extends TestCase {
 
+  /**
+   * Builds a SearchTools instance backed by the given Search mock.
+   */
   protected function createTools(Search $search): SearchTools {
     return new SearchTools(fn() => $search);
   }
 
+  /**
+   * Normalizes result items, truncating description and counting distributions.
+   */
   public function testSearchDatasetsSuccess(): void {
     $longDesc = str_repeat('A', 300);
     $response = (object) [
@@ -52,6 +61,9 @@ class SearchToolsTest extends TestCase {
     $this->assertArrayNotHasKey('%Ref:distribution', $item);
   }
 
+  /**
+   * Casts a string total from the service to an integer.
+   */
   public function testSearchDatasetsTotalCastToInt(): void {
     $search = $this->createMock(Search::class);
     $search->method('search')->willReturn((object) ['results' => [], 'total' => '42']);
@@ -62,6 +74,9 @@ class SearchToolsTest extends TestCase {
     $this->assertSame(42, $result['total']);
   }
 
+  /**
+   * Returns an error payload when the search service throws.
+   */
   public function testSearchDatasetsServiceError(): void {
     $search = $this->createMock(Search::class);
     $search->method('search')->willThrowException(new \RuntimeException('index unavailable'));
@@ -73,6 +88,9 @@ class SearchToolsTest extends TestCase {
     $this->assertStringContainsString('index unavailable', $result['error']);
   }
 
+  /**
+   * Clamps page and page-size and forwards them to the search service.
+   */
   public function testSearchDatasetsClampsAndForwardsParams(): void {
     $search = $this->createMock(Search::class);
     $search->expects($this->once())
@@ -91,6 +109,9 @@ class SearchToolsTest extends TestCase {
     $this->assertEquals(50, $result['page_size']);
   }
 
+  /**
+   * Tolerates an array-shaped response instead of an object.
+   */
   public function testSearchDatasetsHandlesArrayResponse(): void {
     // The service contract returns an object, but tolerate an array shape too.
     $search = $this->createMock(Search::class);

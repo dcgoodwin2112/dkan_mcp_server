@@ -16,8 +16,14 @@ use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use RootedData\RootedJsonData;
 
+/**
+ * Tests the DatastoreTools query, schema, stats, and sampling methods.
+ */
 class DatastoreToolsTest extends TestCase {
 
+  /**
+   * Builds a DatastoreTools instance with optional mocked dependencies.
+   */
   protected function createTools(
     ?DatastoreService $datastore = NULL,
     ?Query $query = NULL,
@@ -47,6 +53,9 @@ class DatastoreToolsTest extends TestCase {
     return $importInfo;
   }
 
+  /**
+   * Tests a basic query returns results with normalized count fields.
+   */
   public function testQueryDatastoreBasic(): void {
     $queryResult = new RootedJsonData(json_encode([
       'results' => [['name' => 'Alice', 'age' => '30']],
@@ -67,6 +76,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('count', $result);
   }
 
+  /**
+   * Tests a query with column, condition, sort, and limit arguments.
+   */
   public function testQueryDatastoreWithFilters(): void {
     $queryResult = new RootedJsonData(json_encode([
       'results' => [['state' => 'CA']],
@@ -84,6 +96,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals(50, $result['limit']);
   }
 
+  /**
+   * Tests an oversized limit is clamped to the 500-row maximum.
+   */
   public function testQueryDatastoreClampLimit(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -94,6 +109,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals(500, $result['limit']);
   }
 
+  /**
+   * Tests a query exception is returned as a structured error payload.
+   */
   public function testQueryDatastoreError(): void {
     $queryService = $this->createMock(Query::class);
     $queryService->method('runQuery')->willThrowException(new \Exception('Resource not found'));
@@ -105,6 +123,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('nonexistent', $result['resource_id']);
   }
 
+  /**
+   * Tests a MySQL unknown-column error maps to an unknown_column payload.
+   */
   public function testQueryDatastoreUnknownColumnMysqlError(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -128,6 +149,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('test__1', $result['resource_id']);
   }
 
+  /**
+   * Tests a DKAN "Bad query property" error maps to unknown_column.
+   */
   public function testQueryDatastoreUnknownColumnDkanQueryFactoryError(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn(['fields' => ['x' => ['type' => 'int']]]);
@@ -141,6 +165,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('(unknown)', $result['column']);
   }
 
+  /**
+   * Tests column, condition, and sort names are corrected to schema casing.
+   */
   public function testQueryDatastoreCanonicalizesColumnCase(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -172,6 +199,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('Violent_Crimes', $decoded['sorts'][0]['property']);
   }
 
+  /**
+   * Tests grouping column names are corrected to schema casing.
+   */
   public function testQueryDatastoreCanonicalizesGroupings(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -191,6 +221,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('State', $decoded['groupings'][0]['property']);
   }
 
+  /**
+   * Tests case correction is skipped when two columns differ only by case.
+   */
   public function testQueryDatastoreLeavesAmbiguousCaseAlone(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     // Two columns differing only by case → ambiguous, no auto-correct.
@@ -215,6 +248,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame(['DATE'], $decoded['properties']);
   }
 
+  /**
+   * Tests distinctValues corrects a lowercase column to its schema casing.
+   */
   public function testDistinctValuesCanonicalizesColumnCase(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -243,6 +279,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('State', $result['column']);
   }
 
+  /**
+   * Tests getDatastoreStats corrects a lowercase column to schema casing.
+   */
   public function testGetDatastoreStatsCanonicalizesColumnCase(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -275,6 +314,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('State', $result['columns'][0]['name']);
   }
 
+  /**
+   * Tests sanity flags report zero_rows for an empty result set.
+   */
   public function testSanityFlagsZeroRows(): void {
     $queryService = $this->createMock(Query::class);
     $queryService->method('runQuery')->willReturn(new RootedJsonData('{"results":[],"count":0}'));
@@ -286,6 +328,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertNull($result['sanity_flags']['coverage_warning']);
   }
 
+  /**
+   * Tests sanity flags report row_cap_hit when results fill the limit.
+   */
   public function testSanityFlagsRowCapHit(): void {
     $rows = array_fill(0, 50, ['x' => '1']);
     $queryService = $this->createMock(Query::class);
@@ -298,6 +343,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertFalse($result['sanity_flags']['zero_rows']);
   }
 
+  /**
+   * Tests sanity flags list columns that are null across all rows.
+   */
   public function testSanityFlagsAllNullColumns(): void {
     $rows = [
       ['name' => 'Alice', 'middle' => NULL, 'age' => 30],
@@ -312,6 +360,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame(['middle'], $result['sanity_flags']['all_null_columns']);
   }
 
+  /**
+   * Tests a coverage warning is set for zero rows on a date-field filter.
+   */
   public function testCoverageWarningWhenZeroRowsAndDateFilter(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -329,6 +380,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('report_year', $result['sanity_flags']['coverage_warning']);
   }
 
+  /**
+   * Tests no coverage warning is set for zero rows on a non-date filter.
+   */
   public function testCoverageWarningSkippedForNonDateFilter(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -345,6 +399,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertNull($result['sanity_flags']['coverage_warning']);
   }
 
+  /**
+   * Tests getDatastoreSchema returns columns and omits record_number.
+   */
   public function testGetDatastoreSchema(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -370,6 +427,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('description', $result['columns'][1]);
   }
 
+  /**
+   * Tests getDatastoreSchema returns an error when storage lookup fails.
+   */
   public function testGetDatastoreSchemaError(): void {
     $datastore = $this->createMock(DatastoreService::class);
     $datastore->method('getStorage')->willThrowException(new \Exception('Not found'));
@@ -397,6 +457,9 @@ class DatastoreToolsTest extends TestCase {
     ]));
   }
 
+  /**
+   * Builds a data-dictionary RootedJsonData fixture with the given fields.
+   */
   protected function buildDictionary(string $id, array $fields): RootedJsonData {
     return new RootedJsonData(json_encode([
       'identifier' => $id,
@@ -407,6 +470,9 @@ class DatastoreToolsTest extends TestCase {
     ]));
   }
 
+  /**
+   * Builds a DatastoreService mock whose storage schema has the given fields.
+   */
   protected function buildDatastoreMockWithFields(array $fields): DatastoreService {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn(['fields' => $fields]);
@@ -415,6 +481,9 @@ class DatastoreToolsTest extends TestCase {
     return $datastore;
   }
 
+  /**
+   * Tests schema columns are enriched with matching data-dictionary fields.
+   */
   public function testGetDatastoreSchemaWithDictionary(): void {
     $resId = 'abc123';
     $version = 'v1';
@@ -457,6 +526,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('dictionary_description', $age);
   }
 
+  /**
+   * Tests no dictionary fetch occurs when the distribution has no describedBy.
+   */
   public function testGetDatastoreSchemaNoDictionary(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $metastore->method('getAll')->willReturn([
@@ -478,6 +550,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('dictionary_title', $result['columns'][0]);
   }
 
+  /**
+   * Tests columns absent from the dictionary get no enrichment keys.
+   */
   public function testGetDatastoreSchemaDictionaryMissingField(): void {
     $url = 'https://site.example/api/1/metastore/schemas/data-dictionary/items/dict-uuid';
     $metastore = $this->createMock(MetastoreService::class);
@@ -505,6 +580,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('dictionary_type', $result['columns'][1]);
   }
 
+  /**
+   * Tests schema degrades gracefully when the dictionary fetch throws.
+   */
   public function testGetDatastoreSchemaDictionaryFetchFails(): void {
     $url = 'https://site.example/api/1/metastore/schemas/data-dictionary/items/dict-uuid';
     $metastore = $this->createMock(MetastoreService::class);
@@ -527,6 +605,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests the service-level flag disables dictionary enrichment entirely.
+   */
   public function testGetDatastoreSchemaServiceFlagDisablesEnrichment(): void {
     $metastore = $this->createMock(MetastoreService::class);
     // Flag off → no metastore lookup at all.
@@ -545,6 +626,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('dictionary_title', $result['columns'][0]);
   }
 
+  /**
+   * Tests re-enabling the flag restores enrichment after a disable.
+   */
   public function testGetDatastoreSchemaServiceFlagReEnablement(): void {
     $url = 'https://site.example/api/1/metastore/schemas/data-dictionary/items/dict-uuid';
     $metastore = $this->createMock(MetastoreService::class);
@@ -571,6 +655,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('Name', $result['columns'][0]['dictionary_title']);
   }
 
+  /**
+   * Tests the includeDictionary=FALSE argument skips dictionary lookups.
+   */
   public function testGetDatastoreSchemaIncludeDictionaryFalse(): void {
     $metastore = $this->createMock(MetastoreService::class);
     // Neither getAll nor get may be called when opt-out is set.
@@ -588,6 +675,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('name', $result['columns'][0]['name']);
   }
 
+  /**
+   * Tests non-JSON conditions return an "Invalid conditions" error.
+   */
   public function testQueryDatastoreInvalidConditions(): void {
     $tools = $this->createTools();
     $result = $tools->queryDatastore('test-resource', conditions: 'not valid json');
@@ -596,6 +686,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('Invalid conditions', $result['error']);
   }
 
+  /**
+   * Tests a JSON object (not array) of conditions returns an error.
+   */
   public function testQueryDatastoreConditionsObject(): void {
     $tools = $this->createTools();
     $result = $tools->queryDatastore('test-resource', conditions: '{"property":"x","value":"y","operator":"="}');
@@ -604,6 +697,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('must be a JSON array', $result['error']);
   }
 
+  /**
+   * Tests an empty condition operator returns a friendly guidance error.
+   */
   public function testQueryDatastoreEmptyOperatorReturnsFriendlyError(): void {
     $tools = $this->createTools();
     $result = $tools->queryDatastore(
@@ -618,6 +714,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('like', $result['error']);
   }
 
+  /**
+   * Tests an unrecognized condition operator returns a friendly error.
+   */
   public function testQueryDatastoreUnrecognizedOperatorReturnsFriendlyError(): void {
     $tools = $this->createTools();
     $result = $tools->queryDatastore(
@@ -654,6 +753,9 @@ class DatastoreToolsTest extends TestCase {
     }
   }
 
+  /**
+   * Tests operator validation descends into nested condition groups.
+   */
   public function testQueryDatastoreOperatorValidationWalksNestedGroups(): void {
     $tools = $this->createTools();
     $nested = json_encode([
@@ -672,6 +774,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('is empty', $result['error']);
   }
 
+  /**
+   * Tests getImportStatus reports done with row and column counts.
+   */
   public function testGetImportStatus(): void {
     $datastore = $this->createMock(DatastoreService::class);
     $datastore->expects($this->once())
@@ -691,6 +796,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals(5, $result['num_of_columns']);
   }
 
+  /**
+   * Tests getImportStatus handles an object summary as well as an array.
+   */
   public function testGetImportStatusWithObject(): void {
     $summary = (object) ['numOfRows' => 50, 'numOfColumns' => 3];
     $datastore = $this->createMock(DatastoreService::class);
@@ -704,6 +812,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals(3, $result['num_of_columns']);
   }
 
+  /**
+   * Tests aggregation builds grouped properties and a grouping clause.
+   */
   public function testQueryDatastoreWithAggregation(): void {
     $queryResult = new RootedJsonData(json_encode([
       'results' => [['state' => 'CA', 'total' => '500']],
@@ -739,6 +850,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests an explicit grouped column is not duplicated by auto-inclusion.
+   */
   public function testQueryDatastoreAggregationWithColumns(): void {
     $queryResult = new RootedJsonData(json_encode([
       'results' => [['state' => 'CA', 'total' => '500']],
@@ -771,6 +885,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests invalid, incomplete, and bad-operator expressions return errors.
+   */
   public function testQueryDatastoreInvalidExpressions(): void {
     $tools = $this->createTools();
 
@@ -790,6 +907,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('Invalid operator', $result['error']);
   }
 
+  /**
+   * Tests wrong-typed expression fields return errors instead of throwing.
+   */
   public function testQueryDatastoreRejectsMalformedExpressionTypes(): void {
     $tools = $this->createTools();
 
@@ -809,6 +929,9 @@ class DatastoreToolsTest extends TestCase {
     }
   }
 
+  /**
+   * Tests an expression alias colliding with a column or grouping errors.
+   */
   public function testQueryDatastoreAliasConflict(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -842,6 +965,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('conflicts with a column', $result['error']);
   }
 
+  /**
+   * Tests an alias conflicting with a schema column errors without columns set.
+   */
   public function testQueryDatastoreAliasConflictWithSchemaColumn(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -866,6 +992,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('conflicts with a column', $result['error']);
   }
 
+  /**
+   * Tests two expressions sharing the same alias are rejected.
+   */
   public function testQueryDatastoreAliasConflictDuplicateAliases(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -890,6 +1019,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('conflicts with a column', $result['error']);
   }
 
+  /**
+   * Tests alias checking falls back gracefully when schema lookup fails.
+   */
   public function testQueryDatastoreAliasSchemaLookupFailure(): void {
     // When schema lookup fails (resource not found), alias check falls back
     // to columns + groupings only — no error from the schema lookup itself.
@@ -918,6 +1050,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests record_number is allowed as an alias since it is not a schema column.
+   */
   public function testQueryDatastoreAliasRecordNumber(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -945,6 +1080,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests groupings alone auto-include the grouped columns as properties.
+   */
   public function testQueryDatastoreGroupingsOnly(): void {
     $queryResult = new RootedJsonData(json_encode([
       'results' => [['state' => 'CA'], ['state' => 'TX']],
@@ -973,6 +1111,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests a basic join builds two aliased resources and a join condition.
+   */
   public function testQueryDatastoreJoinBasic(): void {
     $queryResult = new RootedJsonData(json_encode([
       'results' => [['state' => 'CA', 'asthma' => '10', 'smoking' => '15']],
@@ -1010,6 +1151,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals(1, $result['total_rows']);
   }
 
+  /**
+   * Tests qualified join columns map to resource-qualified properties.
+   */
   public function testQueryDatastoreJoinWithColumns(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -1029,6 +1173,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests unqualified join columns default to the primary resource.
+   */
   public function testQueryDatastoreJoinUnqualifiedColumns(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -1048,6 +1195,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests join conditions pass through their resource, property, and value.
+   */
   public function testQueryDatastoreJoinWithConditions(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -1069,6 +1219,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests a JSON join_on with qualified sides builds the join condition.
+   */
   public function testQueryDatastoreJoinJsonCondition(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -1091,6 +1244,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests an unqualified JSON right side defaults to the joined resource.
+   */
   public function testQueryDatastoreJoinJsonUnqualifiedRightDefaultsToJoined(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -1113,6 +1269,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests a JSON join "like" operator is normalized to case-sensitive LIKE.
+   */
   public function testQueryDatastoreJoinJsonOperatorPassedThrough(): void {
     $queryService = $this->createMock(Query::class);
     $queryService->method('runQuery')->willReturnCallback(function ($datastoreQuery) {
@@ -1130,6 +1289,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests invalid JSON join operators return an "Invalid join operator" error.
+   */
   public function testQueryDatastoreJoinJsonInvalidOperatorReturnsError(): void {
     $tools = $this->createTools();
     foreach (['foo', 'DROP', '; --', ['>'], 5] as $op) {
@@ -1140,6 +1302,9 @@ class DatastoreToolsTest extends TestCase {
     }
   }
 
+  /**
+   * Tests a "j.x=t.y" join still attaches the second resource, not the primary.
+   */
   public function testQueryDatastoreJoinCrossQualifiedJoinsSecondResource(): void {
     $queryService = $this->createMock(Query::class);
     $queryService->method('runQuery')->willReturnCallback(function ($datastoreQuery) {
@@ -1159,6 +1324,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests malformed join_on strings return descriptive errors.
+   */
   public function testQueryDatastoreJoinInvalidJoinOn(): void {
     $tools = $this->createTools();
 
@@ -1177,6 +1345,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('Invalid JSON join_on', $result['error']);
   }
 
+  /**
+   * Tests non-string JSON join_on sides return an error, not a TypeError.
+   */
   public function testQueryDatastoreJoinRejectsNonStringJsonSides(): void {
     $tools = $this->createTools();
 
@@ -1194,6 +1365,9 @@ class DatastoreToolsTest extends TestCase {
     }
   }
 
+  /**
+   * Tests a qualified join sort field resolves to its resource and property.
+   */
   public function testQueryDatastoreJoinSortWithAlias(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -1214,6 +1388,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests a join query exception is returned as a structured error.
+   */
   public function testQueryDatastoreJoinError(): void {
     $queryService = $this->createMock(Query::class);
     $queryService->method('runQuery')->willThrowException(new \Exception('Resource not found'));
@@ -1328,7 +1505,7 @@ class DatastoreToolsTest extends TestCase {
   }
 
   /**
-   * Edge case: qualified fields in simple join_on format (e.g., "t.state=j.state").
+   * Edge case: qualified fields in simple join_on (e.g. "t.state=j.state").
    *
    * Simple format parses alias prefixes via parseQualifiedField(), so
    * "t.state=j.state" correctly resolves resource and property.
@@ -1413,6 +1590,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('both sides of "=" must be non-empty', $result['error']);
   }
 
+  /**
+   * Tests getImportStatus reports not_imported when the summary throws.
+   */
   public function testGetImportStatusNotImported(): void {
     $datastore = $this->createMock(DatastoreService::class);
     $datastore->method('summary')->willThrowException(new \Exception('Resource not found'));
@@ -1425,6 +1605,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayHasKey('error', $result);
   }
 
+  /**
+   * Tests a zero-row imported table reports done, not pending.
+   */
   public function testGetImportStatusZeroRowsReportsDone(): void {
     // A header-only CSV imports to a valid table with zero data rows. It must
     // report 'done' (table exists), not 'pending' forever.
@@ -1440,6 +1623,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame(5, $result['num_of_columns']);
   }
 
+  /**
+   * Tests a negative offset is clamped to zero in the built query.
+   */
   public function testQueryDatastoreClampsNegativeOffset(): void {
     $captured = NULL;
     $queryService = $this->createMock(Query::class);
@@ -1455,11 +1641,14 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame(0, $decoded['offset'] ?? 0);
   }
 
+  /**
+   * Tests searchColumns clamps a non-positive limit to one match.
+   */
   public function testSearchColumnsClampsNonPositiveLimit(): void {
     [$datasets, $gatherResults, $schemas] = array_values($this->getSearchColumnsFixtures());
     $tools = $this->createSearchColumnsTools($datasets, $gatherResults, $schemas);
 
-    // limit <= 0 must clamp to 1, not break on the first match with a >= 0
+    // Limit <= 0 must clamp to 1, not break on the first match with a >= 0
     // comparison; the call still returns a well-formed result with matches.
     $result = $tools->searchColumns('a', 'name', 0);
 
@@ -1468,6 +1657,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertLessThanOrEqual(1, count($result['matches']));
   }
 
+  /**
+   * Tests a queued deferred import with no table reports pending.
+   */
   public function testGetImportStatusQueuedDeferredImportReportsPending(): void {
     // A deferred import: file fetched (localized), datastore import queued, no
     // table yet, importer still WAITING. Must be 'pending', not 'not_imported'.
@@ -1483,6 +1675,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('pending', $result['status']);
   }
 
+  /**
+   * Tests a re-import over a stale table reports pending, not done.
+   */
   public function testGetImportStatusQueuedReimportDoesNotMaskAsDone(): void {
     // A re-import queued over an older table: importer WAITING, fetcher done,
     // a stale table exists. Must report 'pending', not 'done'.
@@ -1499,6 +1694,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('pending', $result['status']);
   }
 
+  /**
+   * Tests a DONE zero-row import via ImportInfo reports done.
+   */
   public function testGetImportStatusViaImportInfoZeroRowsReportsDone(): void {
     // Production branch (ImportInfo present): a completed zero-row import is
     // 'done' on the importer's authoritative DONE state.
@@ -1516,6 +1714,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame(0, $result['num_of_rows']);
   }
 
+  /**
+   * Tests an importer error via ImportInfo reports error with its message.
+   */
   public function testGetImportStatusViaImportInfoErrorReportsError(): void {
     $datastore = $this->createMock(DatastoreService::class);
     $datastore->method('summary')->willThrowException(new \Exception('No datastore storage found'));
@@ -1530,6 +1731,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('chunk 3 failed', $result['error']);
   }
 
+  /**
+   * Tests both stages waiting with no table reports not_imported.
+   */
   public function testGetImportStatusNeverImportedViaImportInfoReportsNotImported(): void {
     // Neither stage started (fetcher + importer WAITING) and no table: the
     // resource is genuinely un-queued.
@@ -1638,6 +1842,9 @@ class DatastoreToolsTest extends TestCase {
     return [$datasets, $gatherResults, $schemas];
   }
 
+  /**
+   * Tests searchColumns matches a column by name across resources.
+   */
   public function testSearchColumnsBasicNameMatch(): void {
     [$datasets, $gather, $schemas] = $this->getSearchColumnsFixtures();
     $tools = $this->createSearchColumnsTools($datasets, $gather, $schemas);
@@ -1655,6 +1862,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals('name', $result['matches'][0]['matched_in']);
   }
 
+  /**
+   * Tests searchColumns matches against column descriptions.
+   */
   public function testSearchColumnsDescriptionMatch(): void {
     [$datasets, $gather, $schemas] = $this->getSearchColumnsFixtures();
     $tools = $this->createSearchColumnsTools($datasets, $gather, $schemas);
@@ -1666,6 +1876,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals('description', $result['matches'][0]['matched_in']);
   }
 
+  /**
+   * Tests searchColumns reports "both" when name and description match.
+   */
   public function testSearchColumnsBothMatch(): void {
     [$datasets, $gather, $schemas] = $this->getSearchColumnsFixtures();
     $tools = $this->createSearchColumnsTools($datasets, $gather, $schemas);
@@ -1677,6 +1890,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals('both', $result['matches'][0]['matched_in']);
   }
 
+  /**
+   * Tests searchColumns returns no matches for an absent term.
+   */
   public function testSearchColumnsNoMatches(): void {
     [$datasets, $gather, $schemas] = $this->getSearchColumnsFixtures();
     $tools = $this->createSearchColumnsTools($datasets, $gather, $schemas);
@@ -1688,6 +1904,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals(2, $result['resources_searched']);
   }
 
+  /**
+   * Tests searchColumns matching is case-insensitive.
+   */
   public function testSearchColumnsCaseInsensitive(): void {
     [$datasets, $gather, $schemas] = $this->getSearchColumnsFixtures();
     $tools = $this->createSearchColumnsTools($datasets, $gather, $schemas);
@@ -1698,6 +1917,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals('state', $result['matches'][0]['column_name']);
   }
 
+  /**
+   * Tests searchColumns skips distributions that are not imported.
+   */
   public function testSearchColumnsSkipsNonImported(): void {
     [$datasets, $gather, $schemas] = $this->getSearchColumnsFixtures();
     // Change uuid-1 distribution to waiting status.
@@ -1706,11 +1928,14 @@ class DatastoreToolsTest extends TestCase {
 
     $result = $tools->searchColumns('state');
 
-    // state column is in uuid-1 which is now skipped.
+    // State column is in uuid-1 which is now skipped.
     $this->assertEquals(0, $result['total_matches']);
     $this->assertEquals(1, $result['resources_searched']);
   }
 
+  /**
+   * Tests searchColumns never matches the synthetic record_number column.
+   */
   public function testSearchColumnsSkipsRecordNumber(): void {
     [$datasets, $gather, $schemas] = $this->getSearchColumnsFixtures();
     $tools = $this->createSearchColumnsTools($datasets, $gather, $schemas);
@@ -1720,6 +1945,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals(0, $result['total_matches']);
   }
 
+  /**
+   * Tests searchColumns caps returned matches at the given limit.
+   */
   public function testSearchColumnsLimit(): void {
     [$datasets, $gather, $schemas] = $this->getSearchColumnsFixtures();
     $tools = $this->createSearchColumnsTools($datasets, $gather, $schemas);
@@ -1731,6 +1959,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals(2, $result['total_matches']);
   }
 
+  /**
+   * Tests searchColumns rejects empty and whitespace-only search terms.
+   */
   public function testSearchColumnsEmptySearchTerm(): void {
     $tools = $this->createTools();
 
@@ -1743,6 +1974,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayHasKey('error', $result);
   }
 
+  /**
+   * Tests searchColumns rejects an invalid search_in argument.
+   */
   public function testSearchColumnsInvalidSearchIn(): void {
     $tools = $this->createTools();
 
@@ -1752,6 +1986,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('Invalid search_in', $result['error']);
   }
 
+  /**
+   * Tests searchColumns returns an error when the metastore call throws.
+   */
   public function testSearchColumnsError(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $metastore->method('count')->willThrowException(new \Exception('Service unavailable'));
@@ -1787,6 +2024,9 @@ class DatastoreToolsTest extends TestCase {
     return $this->createTools(datastore: $datastore, database: $database);
   }
 
+  /**
+   * Tests sampleRows returns rows with the record_number column stripped.
+   */
   public function testSampleRowsReturnsRowsAndStripsRecordNumber(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getTableName')->willReturn('datastore_test');
@@ -1820,6 +2060,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals('CA', $result['rows'][0]['state']);
   }
 
+  /**
+   * Tests sampleRows clamps the requested count to the 1-50 range.
+   */
   public function testSampleRowsClampsN(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getTableName')->willReturn('datastore_test');
@@ -1853,6 +2096,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals([0, 50], $rangeArgs);
   }
 
+  /**
+   * Tests sampleRows returns an error for an unknown resource.
+   */
   public function testSampleRowsErrorOnUnknownResource(): void {
     $datastore = $this->createMock(DatastoreService::class);
     $datastore->method('getStorage')->willThrowException(new \Exception('No such resource'));
@@ -1862,6 +2108,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('No such resource', $result['error']);
   }
 
+  /**
+   * Tests distinctValues returns values and flags truncation past the limit.
+   */
   public function testDistinctValuesReturnsValuesAndDetectsTruncation(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -1897,6 +2146,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertTrue($result['truncated']);
   }
 
+  /**
+   * Tests distinctValues does not flag truncation when within the limit.
+   */
   public function testDistinctValuesNotTruncatedWhenWithinLimit(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -1929,6 +2181,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals(2, $result['value_count']);
   }
 
+  /**
+   * Tests distinctValues returns an error for an unknown column.
+   */
   public function testDistinctValuesUnknownColumn(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -1946,6 +2201,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('Unknown column', $result['error']);
   }
 
+  /**
+   * Tests distinctValues rejects the record_number column.
+   */
   public function testDistinctValuesRejectsRecordNumber(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -1959,6 +2217,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayHasKey('error', $result);
   }
 
+  /**
+   * Tests distinctValues excludes NULLs in SQL but keeps empty strings.
+   */
   public function testDistinctValuesExcludesNullsViaSqlAndKeepsEmptyStrings(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -1998,6 +2259,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame(3, $result['value_count']);
   }
 
+  /**
+   * Tests getDatastoreStats returns per-column stats for all columns.
+   */
   public function testGetDatastoreStatsAllColumns(): void {
     $tools = $this->createStatsTools(
       [
@@ -2038,6 +2302,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals(100, $amount['distinct_count']);
   }
 
+  /**
+   * Tests getDatastoreStats limits output to the requested column.
+   */
   public function testGetDatastoreStatsFilteredColumns(): void {
     $tools = $this->createStatsTools(
       [
@@ -2060,6 +2327,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertEquals('state', $result['columns'][0]['name']);
   }
 
+  /**
+   * Tests getDatastoreStats returns an error for an unknown column.
+   */
   public function testGetDatastoreStatsUnknownColumn(): void {
     $tools = $this->createStatsTools(
       [
@@ -2076,6 +2346,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('nonexistent', $result['error']);
   }
 
+  /**
+   * Tests getDatastoreStats returns an error for an invalid resource.
+   */
   public function testGetDatastoreStatsInvalidResource(): void {
     $datastore = $this->createMock(DatastoreService::class);
     $datastore->method('getStorage')->willThrowException(new \Exception('Resource not found'));
@@ -2087,6 +2360,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('Resource not found', $result['error']);
   }
 
+  /**
+   * Tests an arithmetic expression builds an aliased operator property.
+   */
   public function testQueryDatastoreArithmeticExpression(): void {
     $queryResult = new RootedJsonData(json_encode([
       'results' => [['col1' => '10', 'col2' => '5', 'total' => '15']],
@@ -2114,6 +2390,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests all five arithmetic operators are accepted.
+   */
   public function testQueryDatastoreAllArithmeticOperators(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -2128,6 +2407,9 @@ class DatastoreToolsTest extends TestCase {
     }
   }
 
+  /**
+   * Tests arithmetic operators require exactly two operands.
+   */
   public function testQueryDatastoreArithmeticRequiresTwoOperands(): void {
     $tools = $this->createTools();
 
@@ -2148,6 +2430,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('requires exactly 2 operands', $result['error']);
   }
 
+  /**
+   * Tests aggregate operators require exactly one operand.
+   */
   public function testQueryDatastoreAggregateRequiresOneOperand(): void {
     $tools = $this->createTools();
 
@@ -2159,6 +2444,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('requires exactly 1 operand', $result['error']);
   }
 
+  /**
+   * Tests mixing aggregate and arithmetic expressions is rejected.
+   */
   public function testQueryDatastoreMixedOperatorsRejected(): void {
     $tools = $this->createTools();
 
@@ -2170,6 +2458,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('Cannot mix aggregate', $result['error']);
   }
 
+  /**
+   * Tests a nested arithmetic expression operand is accepted.
+   */
   public function testQueryDatastoreNestedArithmeticExpression(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -2191,6 +2482,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests an arithmetic expression alias conflicting with a column errors.
+   */
   public function testQueryDatastoreArithmeticAliasConflict(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -2212,6 +2506,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('conflicts with a column', $result['error']);
   }
 
+  /**
+   * Tests a join with an aggregate expression appends an aliased property.
+   */
   public function testQueryDatastoreJoinWithExpressions(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -2234,6 +2531,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests join groupings become resource-qualified grouping objects.
+   */
   public function testQueryDatastoreJoinWithGroupings(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -2254,6 +2554,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests a join with both expressions and groupings builds both clauses.
+   */
   public function testQueryDatastoreJoinWithExpressionsAndGroupings(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -2276,6 +2579,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests join grouped columns are auto-included as qualified properties.
+   */
   public function testQueryDatastoreJoinGroupingsAutoInclude(): void {
     $queryResult = new RootedJsonData('{"results":[],"count":0}');
     $queryService = $this->createMock(Query::class);
@@ -2296,6 +2602,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('error', $result);
   }
 
+  /**
+   * Tests a join expression alias conflicting with a grouping errors.
+   */
   public function testQueryDatastoreJoinExpressionAliasConflict(): void {
     $tools = $this->createTools();
 
@@ -2310,6 +2619,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertStringContainsString('conflicts with a column', $result['error']);
   }
 
+  /**
+   * Tests HTML-encoded condition operators are decoded before querying.
+   */
   public function testQueryDatastoreDecodesHtmlEntityOperators(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -2338,6 +2650,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('<=', $decoded['conditions'][1]['operator']);
   }
 
+  /**
+   * Tests HTML-encoded operators are decoded inside nested condition groups.
+   */
   public function testQueryDatastoreDecodesOperatorsInNestedAndOrGroups(): void {
     $storage = $this->createMock(DatabaseTableInterface::class);
     $storage->method('getSchema')->willReturn([
@@ -2371,6 +2686,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('>=', $sub[1]['operator']);
   }
 
+  /**
+   * Tests plain operators and entity-bearing values are left unchanged.
+   */
   public function testQueryDatastoreLeavesPlainOperatorsAndValuesUntouched(): void {
     // Decoding is idempotent on already-plain operators; values keep their
     // entities so we don't corrupt legitimate data.
@@ -2399,6 +2717,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('Smith &amp; Jones', $decoded['conditions'][0]['value']);
   }
 
+  /**
+   * Tests a bare distribution UUID resolves to its resource id and version.
+   */
   public function testResolvesBareDistributionUuid(): void {
     $distribution = new RootedJsonData(json_encode([
       'data' => [
@@ -2434,6 +2755,9 @@ class DatastoreToolsTest extends TestCase {
     $this->assertSame('state', $result['columns'][0]['name']);
   }
 
+  /**
+   * Tests a bare id falls back to direct storage when it is not a distribution.
+   */
   public function testBareIdFallsBackWhenNotDistribution(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $metastore->method('get')->willThrowException(new \Exception('not found'));

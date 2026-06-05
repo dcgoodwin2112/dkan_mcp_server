@@ -7,6 +7,9 @@ namespace Drupal\dkan_datastore\Service\Info;
  */
 class ImportInfo {
 
+  /**
+   * {@inheritdoc}
+   */
   public function getItem(string $identifier, string $version): object {
     return (object) [
       'fileFetcherStatus' => 'waiting',

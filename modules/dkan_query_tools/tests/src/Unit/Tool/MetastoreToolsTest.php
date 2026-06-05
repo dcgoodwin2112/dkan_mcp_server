@@ -8,13 +8,22 @@ use Drupal\dkan_metastore\MetastoreService;
 use PHPUnit\Framework\TestCase;
 use RootedData\RootedJsonData;
 
+/**
+ * Tests the MetastoreTools query and shaping methods.
+ */
 class MetastoreToolsTest extends TestCase {
 
+  /**
+   * Builds a MetastoreTools instance with the given mocked dependencies.
+   */
   protected function createTools(MetastoreService $metastore, ?DatasetInfo $datasetInfo = NULL): MetastoreTools {
     $datasetInfo = $datasetInfo ?? $this->createMock(DatasetInfo::class);
     return new MetastoreTools($metastore, $datasetInfo);
   }
 
+  /**
+   * Lists datasets and summarizes identifier, title, and distribution count.
+   */
   public function testListDatasets(): void {
     $dataset1 = new RootedJsonData(json_encode([
       'identifier' => 'abc-123',
@@ -39,6 +48,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertEquals(1, $result['datasets'][0]['distributions']);
   }
 
+  /**
+   * Clamps an oversized limit to the maximum of 100.
+   */
   public function testListDatasetsClampLimit(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $metastore->method('getAll')->willReturn([]);
@@ -49,6 +61,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertEquals(100, $result['limit']);
   }
 
+  /**
+   * Adjusts the total to the actual item count when all fit on one page.
+   */
   public function testListDatasetsCountAdjustment(): void {
     $dataset1 = new RootedJsonData(json_encode([
       'identifier' => 'abc-123',
@@ -73,6 +88,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertEquals(2, $result['total']);
   }
 
+  /**
+   * Returns a dataset and strips internal %Ref and %-prefixed keys.
+   */
   public function testGetDataset(): void {
     $data = [
       'identifier' => 'abc-123',
@@ -93,6 +111,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('%modified', $result['dataset']);
   }
 
+  /**
+   * Returns an error payload when the dataset does not exist.
+   */
   public function testGetDatasetNotFound(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $metastore->method('get')->willThrowException(new \Exception('Not found'));
@@ -102,6 +123,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertArrayHasKey('error', $result);
   }
 
+  /**
+   * Lists a dataset's distributions with identifiers and media types.
+   */
   public function testListDistributions(): void {
     $data = [
       'identifier' => 'abc-123',
@@ -128,6 +152,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertEquals('text/csv', $result['distributions'][0]['mediaType']);
   }
 
+  /**
+   * Exposes describedBy and describedByType when present on a distribution.
+   */
   public function testListDistributionsExposesDescribedBy(): void {
     $url = 'https://site.example/api/1/metastore/schemas/data-dictionary/items/dict-1';
     $data = [
@@ -153,6 +180,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertSame('application/vnd.tableschema+json', $result['distributions'][0]['describedByType']);
   }
 
+  /**
+   * Omits describedBy keys when the distribution has none.
+   */
   public function testListDistributionsOmitsDescribedByWhenAbsent(): void {
     $data = [
       'identifier' => 'abc-123',
@@ -169,6 +199,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('describedByType', $result['distributions'][0]);
   }
 
+  /**
+   * Resolves data dictionaries from a dataset UUID via its describedBy link.
+   */
   public function testGetDataDictionaryByDatasetUuid(): void {
     $url = 'https://site.example/api/1/metastore/schemas/data-dictionary/items/dict-1';
     $dataset = [
@@ -213,6 +246,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertSame('col_a', $entry['fields'][0]['name']);
   }
 
+  /**
+   * Resolves a data dictionary from a resource id by scanning distributions.
+   */
   public function testGetDataDictionaryByResourceId(): void {
     $url = 'https://site.example/api/1/metastore/schemas/data-dictionary/items/dict-2';
     $datasetList = [
@@ -241,6 +277,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertSame('dict-2', $result['dictionaries']['res-1__v1']['identifier']);
   }
 
+  /**
+   * Returns an error when the dataset has no linked data dictionary.
+   */
   public function testGetDataDictionaryNotLinked(): void {
     $dataset = [
       'identifier' => 'abc-123',
@@ -255,6 +294,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertArrayHasKey('error', $result);
   }
 
+  /**
+   * Returns an error when no distribution matches the given resource id.
+   */
   public function testGetDataDictionaryByResourceIdNoMatch(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $metastore->method('getAll')->willReturn([]);
@@ -266,6 +308,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertStringContainsString('No distribution', $result['error']);
   }
 
+  /**
+   * Returns a distribution and strips the nested %Ref:downloadURL key.
+   */
   public function testGetDistribution(): void {
     // Real DKAN structure: %Ref:downloadURL is nested inside 'data'.
     $data = [
@@ -290,6 +335,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertEquals('http://example.com/data.csv', $result['distribution']['data']['downloadURL']);
   }
 
+  /**
+   * Returns the list of available metastore schema identifiers.
+   */
   public function testListSchemas(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $metastore->method('getSchemas')->willReturn([
@@ -304,6 +352,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertEquals(['dataset', 'distribution', 'keyword'], $result['schemas']);
   }
 
+  /**
+   * Returns the catalog, truncating descriptions and stripping spatial data.
+   */
   public function testGetCatalog(): void {
     $longDescription = str_repeat('A', 300);
     $catalog = (object) [
@@ -330,6 +381,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertArrayNotHasKey('spatial', $result['catalog']['dataset'][0]);
   }
 
+  /**
+   * Returns gathered dataset info including the latest revision details.
+   */
   public function testGetDatasetInfo(): void {
     $info = [
       'latest_revision' => [
@@ -355,6 +409,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertEquals('abc-123', $result['dataset_info']['latest_revision']['uuid']);
   }
 
+  /**
+   * Catches a thrown error and returns it as an error payload.
+   */
   public function testGetDatasetInfoCatchesError(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $datasetInfo = $this->createMock(DatasetInfo::class);
@@ -367,6 +424,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertStringContainsString('type error', $result['error']);
   }
 
+  /**
+   * Returns an error naming the id when dataset info gathers only a notice.
+   */
   public function testGetDatasetInfoNotFound(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $datasetInfo = $this->createMock(DatasetInfo::class);
@@ -380,6 +440,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertStringContainsString('nonexistent', $result['error']);
   }
 
+  /**
+   * Returns a named schema along with its id.
+   */
   public function testGetSchema(): void {
     $schema = (object) [
       'type' => 'object',
@@ -398,6 +461,9 @@ class MetastoreToolsTest extends TestCase {
     $this->assertEquals('object', $result['schema']['type']);
   }
 
+  /**
+   * Returns an error payload when the requested schema is not found.
+   */
   public function testGetSchemaError(): void {
     $metastore = $this->createMock(MetastoreService::class);
     $metastore->method('getSchema')
