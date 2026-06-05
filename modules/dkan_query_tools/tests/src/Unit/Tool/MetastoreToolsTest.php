@@ -5,12 +5,16 @@ namespace Drupal\Tests\dkan_query_tools\Unit\Tool;
 use Drupal\dkan_common\DatasetInfo;
 use Drupal\dkan_query_tools\Tool\MetastoreTools;
 use Drupal\dkan_metastore\MetastoreService;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RootedData\RootedJsonData;
 
 /**
  * Tests the MetastoreTools query and shaping methods.
+ *
+ * @group dkan_query_tools
  */
+#[Group('dkan_query_tools')]
 class MetastoreToolsTest extends TestCase {
 
   /**

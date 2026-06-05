@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\Tests\dkan_mcp_server\Unit\Plugin\Tool;
 
 use Drupal\mcp_server\Attribute\Tool;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -14,7 +15,10 @@ use PHPUnit\Framework\TestCase;
  * every tool plugin's #[Tool] attribute (the developer's source of truth) and
  * asserts the decided values, not mere internal consistency: a future edit that
  * flips a hint to the wrong value fails here. See docs/POLISH_PLAN.md (7a).
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class ToolAnnotationAuditTest extends TestCase {
 
   /**

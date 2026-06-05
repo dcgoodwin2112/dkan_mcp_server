@@ -1,0 +1,81 @@
+################################################################################
+# GitLab CI for dkan_mcp_server.
+#
+# Uses the Drupal Association's contrib pipeline templates (the same include the
+# contrib mcp_server project uses), so phpcs / phpstan / phpunit stay in step
+# with core development automatically. Full activation happens when the project
+# moves to drupal.org GitLab; this file is authored against that template now so
+# the move is a no-op.
+#
+# Gates (config lives beside this file):
+#   - phpcs    -> phpcs.xml.dist     (Drupal + DrupalPractice, php/install/yml)
+#   - phpstan  -> phpstan.neon.dist  (level 1, drupal extension)
+#   - phpunit  -> the module's own unit + kernel tests, selected by
+#                 @group dkan_mcp_server (see _PHPUNIT_TESTGROUPS below).
+#
+# The bundled dkan_query_tools library has a *standalone* unit suite (stubs, no
+# Drupal kernel). It cannot boot under the full-site runner, so it runs in its
+# own job ('phpunit (dkan_query_tools)') against its own phpunit.xml.
+################################################################################
+
+include:
+  - project: $_GITLAB_TEMPLATES_REPO
+    ref: $_GITLAB_TEMPLATES_REF
+    file:
+      - '/includes/include.drupalci.main.yml'
+      - '/includes/include.drupalci.variables.yml'
+      - '/includes/include.drupalci.workflows.yml'
+
+variables:
+  # This module ships no JavaScript or CSS.
+  SKIP_STYLELINT: '1'
+  SKIP_ESLINT: '1'
+  # mcp/sdk pulls optional ext-* (e.g. sodium) that are not on every runner image.
+  COMPOSER_IGNORE_PLATFORM_REQS: '1'
+  # Run the module's own unit + kernel tests by group. The template default
+  # ('--all') would point phpunit at the whole module folder and also sweep the
+  # bundled dkan_query_tools standalone-stub suite, which fails under core's
+  # bootstrap. Scoping to the group keeps that suite to its dedicated job below.
+  _PHPUNIT_TESTGROUPS: 'dkan_mcp_server'
+  # Spell-check dictionary for the cspell job (domain + dependency jargon).
+  # Extend on the first real pipeline run if cspell surfaces more terms.
+  _CSPELL_WORDS: 'dkan, metastore, datastore, mcp, sdk, ssrf, cgnat, gethostbynamel, ip2long, rawurldecode, opis, pkce, jsonrpc, deregister, mcp_server, dkan_mcp_server, dkan_query_tools, phpstan, phpcbf, mglaman, ddev, drush, allowlist, subqueries, canonicalization'
+  # DKAN 4.x targets Drupal 10.2 / 11 only (see info.yml core_version_requirement);
+  # next-minor / next-major core opt-ins are left off until the baseline pipeline
+  # is green on drupal.org. Enable OPT_IN_TEST_NEXT_MINOR once verified there.
+
+# The bundled dkan_query_tools shared library is framework-neutral and tested
+# with standalone stubs (its own bootstrap, no Drupal). It must run in isolation
+# with its own phpunit.xml rather than under core's runner, where the stubs
+# collide with the real Drupal classes. This job reuses the template phpunit
+# job's built environment and only swaps the test command.
+'phpunit (dkan_query_tools)':
+  extends: phpunit
+  variables:
+    _PHPUNIT_TESTGROUPS: 'dkan_query_tools'
+  script:
+    # Path/binary come from the template (the module folder + composer bin dir);
+    # verify these on the first drupal.org run.
+    - $COMPOSER_BIN_DIR/phpunit -c $DRUPAL_PROJECT_FOLDER/modules/dkan_query_tools/phpunit.xml
+
+# Drift canary: bump the pinned mcp_server / mcp/sdk dev branches to current HEAD
+# and re-run the two upstream-contract guards. Surfaces upstream breakage (and
+# the prompt-shim removal signal) early without gating normal pipelines.
+# Runs on schedule or on a manual web trigger only; allowed to fail.
+'drift (upstream HEAD)':
+  extends: phpunit
+  allow_failure: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: manual
+  variables:
+    _PHPUNIT_TESTGROUPS: 'dkan_mcp_server'
+    # Only the drift guards: tool DI discovery + the consumed-symbol contract.
+    _PHPUNIT_EXTRA: '--filter "/(ToolDiscoveryTest|UpstreamContractTest)/"'
+  script:
+    # Drop the tested-commit pins; resolve both dev branches at branch HEAD.
+    - composer require --no-update --dev "drupal/mcp_server:2.x-dev" "mcp/sdk:dev-main"
+    - composer update drupal/mcp_server mcp/sdk --with-all-dependencies
+    # Then run the template's normal phpunit command against the bumped stack.
+    - !reference [phpunit, script]

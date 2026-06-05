@@ -7,13 +7,17 @@ namespace Drupal\Tests\dkan_mcp_server\Unit\Routing;
 use Drupal\Core\Config\ConfigFactoryInterface;
 use Drupal\Core\Config\ImmutableConfig;
 use Drupal\dkan_mcp_server\Routing\RouteSubscriber;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 
 /**
  * Unit tests for the configurable basic_auth route alteration.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class RouteSubscriberTest extends TestCase {
 
   /**

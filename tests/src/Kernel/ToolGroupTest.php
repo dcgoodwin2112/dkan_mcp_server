@@ -9,6 +9,7 @@ use Drupal\KernelTests\KernelTestBase;
 use Drupal\dkan_mcp_server\Form\McpSettingsForm;
 use Drupal\dkan_mcp_server\Plugin\Tool\GroupedToolInterface;
 use Drupal\dkan_mcp_server\Plugin\Tool\ToolGroup;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
@@ -22,6 +23,7 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
  *
  * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 #[RunTestsInSeparateProcesses]
 class ToolGroupTest extends KernelTestBase {
 

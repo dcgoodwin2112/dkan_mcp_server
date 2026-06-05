@@ -22,6 +22,7 @@ use Drupal\dkan_mcp_server\Plugin\Tool\RunHarvestTool;
 use Drupal\dkan_mcp_server\Plugin\Tool\UnpublishDatasetTool;
 use Drupal\dkan_mcp_server\Plugin\Tool\UpdateDatasetTool;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
@@ -32,7 +33,10 @@ use Symfony\Component\Yaml\Yaml;
  * so the tools are instantiated without their constructor and exercised against
  * a mocked account. This pins each write permission string (a typo here would
  * silently widen access) and confirms read tools require none.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class WriteToolPermissionTest extends TestCase {
 
   /**

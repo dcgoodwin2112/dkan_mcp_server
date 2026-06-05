@@ -6,6 +6,7 @@ namespace Drupal\Tests\dkan_mcp_server\Kernel;
 
 use Drupal\KernelTests\KernelTestBase;
 use Mcp\Capability\Formatter\PromptResultFormatter;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Symfony\Component\Yaml\Yaml;
 
@@ -25,6 +26,7 @@ use Symfony\Component\Yaml\Yaml;
  *
  * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 #[RunTestsInSeparateProcesses]
 class UpstreamContractTest extends KernelTestBase {
 

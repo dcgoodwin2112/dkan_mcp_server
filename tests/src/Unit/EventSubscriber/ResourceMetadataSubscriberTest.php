@@ -9,11 +9,15 @@ use Drupal\Core\Entity\EntityStorageInterface;
 use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\dkan_mcp_server\EventSubscriber\ResourceMetadataSubscriber;
 use Drupal\dkan_mcp_server\OAuth\DkanMcpScopes;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Unit tests for DKAN MCP OAuth protected-resource metadata.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class ResourceMetadataSubscriberTest extends TestCase {
 
   /**

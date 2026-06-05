@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="dkan_mcp_server">
+  <description>PHPCS configuration for dkan_mcp_server.</description>
+
+  <!-- Scan the module, including the bundled dkan_query_tools submodule. -->
+  <file>.</file>
+
+  <!-- Only the file types this module actually ships. -->
+  <arg name="extensions" value="php,module,inc,install,yml"/>
+  <arg name="basepath" value="."/>
+  <arg name="colors"/>
+  <arg value="sp"/>
+
+  <!-- Build artefacts and any vendored deps must not be sniffed. -->
+  <exclude-pattern>*/vendor/*</exclude-pattern>
+  <exclude-pattern>*.phpunit.result.cache</exclude-pattern>
+
+  <!-- Prose docs are not code; do not subject Markdown/text to code sniffs. -->
+  <exclude-pattern>*.md</exclude-pattern>
+  <exclude-pattern>*.txt</exclude-pattern>
+
+  <rule ref="Drupal"/>
+  <rule ref="DrupalPractice"/>
+</ruleset>

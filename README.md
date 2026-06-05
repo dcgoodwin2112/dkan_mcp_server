@@ -344,3 +344,40 @@ ddev exec bash -c 'cd docroot && SIMPLETEST_DB="mysql://db:db@${DDEV_PROJECT}-db
   enabled; the anonymous access matrix (25 reads open, 13 writes denied) resolves
   through the real plugins. Boot-time DKAN/core deprecation notices are
   pre-existing and do not fail the run.
+
+## Continuous integration
+
+`.gitlab-ci.yml` uses the Drupal Association contrib pipeline templates (the same
+`include` as contrib `mcp_server`). Config lives beside it: `phpcs.xml.dist`
+(Drupal + DrupalPractice; `php`/`install`/`yml`) and `phpstan.neon.dist`
+(level 1, drupal extension). Activation lands when the project moves to
+drupal.org GitLab; until then it is authored against that template.
+
+Jobs:
+
+- **phpcs / phpstan** — the two config files above.
+- **phpunit** — the module's own unit + kernel tests, selected by
+  `@group dkan_mcp_server` (`_PHPUNIT_TESTGROUPS`). Group selection is required:
+  pointing phpunit at the whole module folder would also sweep the bundled
+  standalone-stub suite, which cannot boot under core's runner. Every test
+  carries both a `#[Group]` attribute and a `@group` docblock: the attribute is
+  read by PHPUnit 10+ (Drupal 10.3+/11), the docblock by PHPUnit 9 (Drupal 10.2).
+  Keep both while `^10.2` is supported, or 10.2 runs silently select zero tests.
+- **`phpunit (dkan_query_tools)`** — the bundled library's standalone suite, run
+  against its own `phpunit.xml` (stubs, no kernel).
+- **`drift (upstream HEAD)`** — scheduled/manual, `allow_failure`. Bumps
+  `mcp_server` / `mcp/sdk` from their pinned commits to branch HEAD and runs the
+  two contract guards (`ToolDiscoveryTest` + `UpstreamContractTest`).
+
+**Reading a drift failure** (the canary for the pinned dev deps):
+
+- `UpstreamContractTest` red → a consumed upstream class/method/property or
+  `#[Tool]` attribute parameter moved. Update the consuming code and the contract
+  list, then bump the `#<sha>` pin (README → Tested versions).
+- `ToolDiscoveryTest` red → a tool no longer instantiates via DI against the new
+  upstream.
+- `testPromptRenderShimStillNeeded` red → upstream fixed the prompt-render
+  defects; remove `PromptRenderSubscriber` (see [ROADMAP](docs/ROADMAP.md)).
+
+The same gates run locally with the commands under Testing plus `phpcs` /
+`phpstan analyse` from the module root (both auto-discover their `*.dist` config).

@@ -18,6 +18,7 @@ use Mcp\Schema\Request\GetPromptRequest;
 use Mcp\Schema\Request\ListToolsRequest;
 use Mcp\Schema\Result\GetPromptResult;
 use Mcp\Server\Session\SessionInterface;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -27,7 +28,10 @@ use PHPUnit\Framework\TestCase;
  * substitutes {{ arg }} placeholders (Defect B) and emits typed content rather
  * than a json-encoded list (Defect A), while leaving non-prompt and
  * unknown-name responses untouched.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class PromptRenderSubscriberTest extends TestCase {
 
   /**

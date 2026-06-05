@@ -12,13 +12,17 @@ use Drupal\dkan_datastore\Service\Info\ImportInfo;
 use Drupal\dkan_datastore\Service\Query;
 use Drupal\dkan_query_tools\Tool\DatastoreTools;
 use Drupal\dkan_metastore\MetastoreService;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use RootedData\RootedJsonData;
 
 /**
  * Tests the DatastoreTools query, schema, stats, and sampling methods.
+ *
+ * @group dkan_query_tools
  */
+#[Group('dkan_query_tools')]
 class DatastoreToolsTest extends TestCase {
 
   /**

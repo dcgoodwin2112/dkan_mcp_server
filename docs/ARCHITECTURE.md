@@ -200,8 +200,10 @@ via DI against the real upstream plugins, so most API drift surfaces there.
 `UpstreamContractTest::testPromptRenderShimStillNeeded` asserts the two
 prompt-render defects still exist — it goes **red** when upstream fixes land,
 which is the signal to drop `PromptRenderSubscriber` (see ROADMAP). Bump
-procedure is in README → Tested versions. The remaining CI drift-detection job is
-tracked in [ROADMAP](ROADMAP.md).
+procedure is in README → Tested versions. CI runs these guards two ways: on every
+pipeline at the pinned commits, and in a scheduled/manual `drift (upstream HEAD)`
+job that re-points both deps to branch HEAD to catch drift before a bump (see
+README → Continuous integration).
 
 ## Submodule split — `dkan_query_tools`
 
