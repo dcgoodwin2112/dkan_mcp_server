@@ -11,9 +11,11 @@ use Drupal\Core\Config\FileStorage;
  * Implements hook_requirements().
  *
  * Surfaces two release-relevant states on the status report:
- * - The MCP HTTP endpoint's auth posture: HTTP Basic auth on /mcp sends
+ * - The MCP HTTP endpoint's auth posture. HTTP Basic auth on /mcp sends
  *   reusable credentials on every request and is meant for local development,
- *   so warn while it is enabled. Turns a silent misconfig into a visible alert.
+ *   so warn while it is active. basic_auth is an optional module; if the flag
+ *   is on without it, the posture is inert (not served) — warned too, so the
+ *   dead configuration is visible rather than silently ineffective.
  * - The pinned development-branch upstreams, as an informational reminder to
  *   re-run the upstream-contract tests after a dependency bump.
  */
@@ -31,15 +33,24 @@ function dkan_mcp_server_requirements($phase) {
 
   $basic_auth = (bool) \Drupal::config('dkan_mcp_server.settings')->get('http_basic_auth');
   $oauth_enabled = \Drupal::moduleHandler()->moduleExists('simple_oauth');
-  $auth_severity = _dkan_mcp_server_auth_severity($basic_auth);
-  if ($auth_severity === 'warning') {
+  $basic_auth_module = \Drupal::moduleHandler()->moduleExists('basic_auth');
+  $auth_state = _dkan_mcp_server_auth_state($basic_auth, $basic_auth_module);
+  if ($auth_state === 'active') {
     $requirements['dkan_mcp_server_auth'] = [
       'title' => t('DKAN MCP server authentication'),
       'value' => $oauth_enabled
         ? t('HTTP Basic auth enabled (OAuth also available)')
         : t('HTTP Basic auth only'),
       'description' => t('The MCP HTTP endpoint (/mcp) accepts HTTP Basic authentication, which transmits reusable credentials on every request and is intended for local development. For production, enable an OAuth provider (e.g. simple_oauth), disable Basic auth with <code>drush cset dkan_mcp_server.settings http_basic_auth false</code> followed by <code>drush cr</code>, and serve /mcp over HTTPS.'),
-      'severity' => $severity_map[$auth_severity],
+      'severity' => $severity_map['warning'],
+    ];
+  }
+  elseif ($auth_state === 'inert') {
+    $requirements['dkan_mcp_server_auth'] = [
+      'title' => t('DKAN MCP server authentication'),
+      'value' => t('Enabled in config, but the basic_auth module is not installed'),
+      'description' => t('dkan_mcp_server.settings:http_basic_auth is on, but the Basic Auth (basic_auth) module is not enabled, so HTTP Basic auth is not active on /mcp. Enable it with <code>drush en basic_auth</code> then <code>drush cr</code>, or turn the flag off with <code>drush cset dkan_mcp_server.settings http_basic_auth false</code>.'),
+      'severity' => $severity_map['warning'],
     ];
   }
   else {
@@ -66,20 +77,30 @@ function dkan_mcp_server_requirements($phase) {
 }
 
 /**
- * Decides the auth-posture requirement severity for the status report.
+ * Classifies the /mcp HTTP Basic auth posture for the status report.
  *
  * Extracted so the security-relevant decision is unit-testable without a
- * bootstrapped container. Basic auth on the network endpoint is the risk, so it
- * warns whenever Basic auth is enabled, regardless of any OAuth provider.
+ * bootstrapped container. basic_auth is an optional module, so the flag alone
+ * does not mean Basic auth is served:
+ * - 'off'    — flag disabled (production OAuth-only posture).
+ * - 'active' — flag on and the basic_auth module enabled, so Basic auth is
+ *   served on /mcp (reusable credentials — the security warning).
+ * - 'inert'  — flag on but the basic_auth module not enabled, so the route
+ *   alteration is a no-op and Basic auth is not served (dead configuration).
  *
  * @param bool $basic_auth
- *   Whether HTTP Basic auth is enabled on the /mcp route.
+ *   Whether the http_basic_auth flag is enabled.
+ * @param bool $module
+ *   Whether the basic_auth module is enabled.
  *
  * @return string
- *   One of 'ok' or 'warning'.
+ *   One of 'off', 'active', or 'inert'.
  */
-function _dkan_mcp_server_auth_severity(bool $basic_auth): string {
-  return $basic_auth ? 'warning' : 'ok';
+function _dkan_mcp_server_auth_state(bool $basic_auth, bool $module): string {
+  if (!$basic_auth) {
+    return 'off';
+  }
+  return $module ? 'active' : 'inert';
 }
 
 /**

@@ -29,7 +29,7 @@ final class UnauthorizedChallengeSubscriberTest extends TestCase {
   /**
    * Builds a subscriber with the given collaborators' behavior.
    */
-  private function subscriber(bool $basic_auth, bool $anonymous, bool $metadata_module): UnauthorizedChallengeSubscriber {
+  private function subscriber(bool $basic_auth, bool $anonymous, bool $metadata_module, bool $basic_auth_module = TRUE): UnauthorizedChallengeSubscriber {
     $config = $this->createMock(ImmutableConfig::class);
     $config->method('get')->with('http_basic_auth')->willReturn($basic_auth);
     $config_factory = $this->createMock(ConfigFactoryInterface::class);
@@ -39,7 +39,10 @@ final class UnauthorizedChallengeSubscriberTest extends TestCase {
     $account->method('isAnonymous')->willReturn($anonymous);
 
     $module_handler = $this->createMock(ModuleHandlerInterface::class);
-    $module_handler->method('moduleExists')->with('simple_oauth_server_metadata')->willReturn($metadata_module);
+    $module_handler->method('moduleExists')->willReturnMap([
+      ['basic_auth', $basic_auth_module],
+      ['simple_oauth_server_metadata', $metadata_module],
+    ]);
 
     $url_generator = $this->createMock(UrlGeneratorInterface::class);
     $url_generator->method('generateFromRoute')
@@ -100,12 +103,26 @@ final class UnauthorizedChallengeSubscriberTest extends TestCase {
   }
 
   /**
-   * Basic-auth mode (local/demo) leaves the response untouched.
+   * Active Basic-auth mode (flag on, module enabled) leaves the response alone.
    */
-  public function testInertWhenBasicAuthEnabled(): void {
-    $s = $this->subscriber(basic_auth: TRUE, anonymous: TRUE, metadata_module: TRUE);
+  public function testInertWhenBasicAuthActive(): void {
+    $s = $this->subscriber(basic_auth: TRUE, anonymous: TRUE, metadata_module: TRUE, basic_auth_module: TRUE);
     $out = $this->handle($s, new Response('', 401));
     $this->assertNull($out->headers->get('WWW-Authenticate'));
+  }
+
+  /**
+   * Flag on but the basic_auth module missing: still OAuth-only, so challenge.
+   *
+   * In this inert-config state RouteSubscriber serves no Basic auth, so the
+   * endpoint stays OAuth-only and must keep emitting the discovery challenge.
+   */
+  public function testEmitsChallengeWhenBasicAuthFlagSetButModuleMissing(): void {
+    $s = $this->subscriber(basic_auth: TRUE, anonymous: TRUE, metadata_module: TRUE, basic_auth_module: FALSE);
+    $response = $this->handle($s, new Response('', 403));
+
+    $this->assertSame(401, $response->getStatusCode());
+    $this->assertStringStartsWith('Bearer ', $response->headers->get('WWW-Authenticate'));
   }
 
   /**

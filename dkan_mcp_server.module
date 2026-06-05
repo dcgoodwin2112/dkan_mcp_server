@@ -1,0 +1,32 @@
+<?php
+
+/**
+ * @file
+ * Hook implementations for dkan_mcp_server.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Url;
+
+/**
+ * Implements hook_help().
+ */
+function dkan_mcp_server_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.dkan_mcp_server':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('DKAN MCP Server exposes DKAN catalog, datastore, harvest, and write operations as <a href=":mcp">Model Context Protocol</a> (MCP) tools, resources, and prompts, so MCP-capable AI clients can query and manage the data catalog. It builds on the contrib <a href=":mcp_server">mcp_server</a> module and contributes the DKAN tools plus per-tool access control.', [
+        ':mcp' => 'https://modelcontextprotocol.io',
+        ':mcp_server' => 'https://www.drupal.org/project/mcp_server',
+      ]) . '</p>';
+      $output .= '<h3>' . t('Access control') . '</h3>';
+      $output .= '<p>' . t('Every tool maps to a Drupal permission. Read tools require <em>access mcp server</em>; each write tool requires its own <em>… via mcp</em> permission. Grant these per role to control who may call which tools; access is enforced on both the HTTP and stdio transports.') . '</p>';
+      $output .= '<h3>' . t('Configuration') . '</h3>';
+      $output .= '<p>' . t('Enable or disable groups of tools on the <a href=":settings">DKAN MCP Server settings</a> page. The HTTP endpoint (/mcp) is OAuth-only by default; HTTP Basic auth is an opt-in local-development path that also requires the core Basic Auth module. See the module README and ARCHITECTURE docs for setup, the OAuth scopes, and the full tool inventory.', [':settings' => Url::fromRoute('dkan_mcp_server.settings_form')->toString()]) . '</p>';
+      return $output;
+
+    case 'dkan_mcp_server.settings_form':
+      return '<p>' . t('Enable or disable DKAN MCP tool groups. Disabling a group hides its tools from MCP clients and blocks calls to them; per-tool Drupal permissions still apply independently.') . '</p>';
+  }
+}

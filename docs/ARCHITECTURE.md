@@ -173,8 +173,12 @@ README → OAuth for setup and the scope table. Components added here:
   `WWW-Authenticate: Bearer resource_metadata="…"` challenge so credential-less
   requests discover the flow via `/.well-known/oauth-protected-resource`.
 - `RouteSubscriber` — appends `basic_auth` to the route's `_auth` when
-  `dkan_mcp_server.settings:http_basic_auth` is TRUE (default FALSE = OAuth-only
-  posture; toggling requires `drush cr`).
+  `dkan_mcp_server.settings:http_basic_auth` is TRUE *and* the optional
+  `basic_auth` module is enabled (default flag FALSE = OAuth-only posture;
+  toggling requires `drush cr`). `basic_auth` is not a hard `info.yml`
+  dependency — only this opt-in path needs it — so the alteration is skipped
+  when it is absent, and `hook_requirements` flags a flag-on-without-module
+  misconfiguration as a dead (`inert`) posture.
 - Scope-backing `oauth2_scope` entities + the `dkan_mcp_write` role ship as
   opt-in `config/optional/` (created once `simple_oauth` is enabled).
 
@@ -214,6 +218,10 @@ parent, has a standalone unit suite (stubs, no Drupal kernel), and is consumed b
 both this module and `dkan_drupal_ai_query`. Query methods return structured
 `error`/`sanity_flags` payloads instead of throwing. See the
 [submodule README](../modules/dkan_query_tools/README.md).
+
+It has no own `composer.json`, so the whole tree packages as a single project —
+one drupal.org release / Composer package. (Drupal's packaging adds
+`version`/`LICENSE.txt`/datestamp at release time; they are not committed here.)
 
 ## Update hooks
 

@@ -8,11 +8,13 @@ use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Tests the hook_requirements auth-posture severity decision.
+ * Tests the hook_requirements auth-posture classification.
  *
  * Loads the procedural .install and exercises the extracted, container-free
- * severity helper: HTTP Basic auth on the MCP endpoint must raise a warning on
- * the status report, regardless of whether an OAuth provider is also present.
+ * state helper. basic_auth is an optional module, so the flag alone does not
+ * mean Basic auth is served: the status report distinguishes off (OAuth-only),
+ * active (served — security warning), and inert (flag on but module missing, so
+ * the configuration is dead).
  *
  * @group dkan_mcp_server
  */
@@ -28,11 +30,16 @@ final class InstallRequirementsTest extends TestCase {
   }
 
   /**
-   * Basic auth enabled warns; disabled is OK.
+   * The flag plus basic_auth module presence map to the three posture states.
    */
-  public function testAuthSeverity(): void {
-    $this->assertSame('warning', _dkan_mcp_server_auth_severity(TRUE));
-    $this->assertSame('ok', _dkan_mcp_server_auth_severity(FALSE));
+  public function testAuthState(): void {
+    // Flag off is the OAuth-only posture regardless of the module.
+    $this->assertSame('off', _dkan_mcp_server_auth_state(FALSE, FALSE));
+    $this->assertSame('off', _dkan_mcp_server_auth_state(FALSE, TRUE));
+    // Flag on with the module serving Basic auth is the security warning.
+    $this->assertSame('active', _dkan_mcp_server_auth_state(TRUE, TRUE));
+    // Flag on without the module is dead configuration.
+    $this->assertSame('inert', _dkan_mcp_server_auth_state(TRUE, FALSE));
   }
 
 }

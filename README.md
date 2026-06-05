@@ -26,6 +26,9 @@ blocked work is in [`docs/ROADMAP.md`](docs/ROADMAP.md).
   `e0ipso/simple_oauth_21:^1` plus the optional `mcp_server_oauth` submodule.
   These are in Composer `suggest` (not `require`) — install them only for the
   OAuth path (see [OAuth](#oauth)).
+- The HTTP Basic-auth local-dev path (off by default) needs the `basic_auth`
+  core module. It is an optional dependency, not in `info.yml` — enable it only
+  for that path (see [HTTP auth posture](#http-auth-posture-http_basic_auth)).
 
 ### Tested versions
 
@@ -264,15 +267,20 @@ request gets a proper `WWW-Authenticate: Bearer resource_metadata="…"` challen
 `Basic` challenge would otherwise shadow OAuth discovery.
 
 For local/demo use — the bundled `.mcp.json` authenticates with a static
-`Authorization: Basic` header — enable Basic auth on the route:
+`Authorization: Basic` header — enable Basic auth on the route. The `basic_auth`
+core module is an optional dependency (only this path needs it), so enable it
+first:
 
 ```bash
+drush en basic_auth -y
 drush cset dkan_mcp_server.settings http_basic_auth true -y && drush cr
 ```
 
 Toggling the flag re-runs the route subscriber, so it requires a router rebuild
-(`drush cr`). Basic and OAuth can be enabled together; in that mode the `Basic`
-challenge takes precedence on credential-less requests.
+(`drush cr`). If the flag is on without `basic_auth` enabled, the route
+alteration is skipped (Basic auth is not served) and the status report flags the
+dead configuration. Basic and OAuth can be enabled together; in that mode the
+`Basic` challenge takes precedence on credential-less requests.
 
 **Upgrading from a pre-OAuth build:** Basic auth used to be always on; it is now
 opt-in (default off). `dkan_mcp_server_update_10001` creates the setting at the
