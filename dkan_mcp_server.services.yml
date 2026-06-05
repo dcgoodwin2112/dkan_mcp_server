@@ -73,11 +73,13 @@ services:
       - { name: event_subscriber }
 
   # Optionally adds basic_auth to the mcp_server.handle route (gated by the
-  # dkan_mcp_server.settings:http_basic_auth flag, default off).
+  # dkan_mcp_server.settings:http_basic_auth flag, default off; skipped when the
+  # optional basic_auth module is not enabled).
   dkan_mcp_server.route_subscriber:
     class: Drupal\dkan_mcp_server\Routing\RouteSubscriber
     arguments:
       - '@config.factory'
+      - '@module_handler'
     tags:
       - { name: event_subscriber }
 

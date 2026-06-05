@@ -25,8 +25,9 @@ use Symfony\Component\HttpKernel\KernelEvents;
  * flow. When a Bearer challenge is already present (e.g. an invalid token
  * handled by simple_oauth), it only appends the missing `resource_metadata`.
  *
- * Inert when Basic auth is enabled (local/demo) or when the
- * simple_oauth_server_metadata discovery endpoint is unavailable.
+ * Inert when Basic auth is actually served (the flag is on and the optional
+ * basic_auth module is enabled) or when the simple_oauth_server_metadata
+ * discovery endpoint is unavailable.
  */
 final class UnauthorizedChallengeSubscriber implements EventSubscriberInterface {
 
@@ -62,8 +63,12 @@ final class UnauthorizedChallengeSubscriber implements EventSubscriberInterface 
       return;
     }
     // Only in OAuth-only mode, only for unauthenticated callers, and only when
-    // the discovery document this points to actually exists.
-    if ($this->configFactory->get('dkan_mcp_server.settings')->get('http_basic_auth')) {
+    // the discovery document this points to actually exists. Basic auth counts
+    // as "active" only when the flag is on AND the optional basic_auth module
+    // is enabled (RouteSubscriber gates the route the same way); with the flag
+    // on but the module missing, no Basic auth is served, so the endpoint is
+    // still OAuth-only and must keep emitting the discovery challenge.
+    if ($this->basicAuthActive()) {
       return;
     }
     if (!$this->currentUser->isAnonymous()) {
@@ -97,6 +102,18 @@ final class UnauthorizedChallengeSubscriber implements EventSubscriberInterface 
     // No usable challenge (credential-less request): emit a fresh one.
     $response->setStatusCode(401);
     $response->headers->set('WWW-Authenticate', 'Bearer ' . $metadata);
+  }
+
+  /**
+   * Whether HTTP Basic auth is actually served on the MCP route.
+   *
+   * The http_basic_auth flag only takes effect when the optional basic_auth
+   * module is enabled; RouteSubscriber gates the route alteration on the same
+   * condition. With the flag on but the module absent, no Basic auth is served.
+   */
+  private function basicAuthActive(): bool {
+    $enabled = (bool) $this->configFactory->get('dkan_mcp_server.settings')->get('http_basic_auth');
+    return $enabled && $this->moduleHandler->moduleExists('basic_auth');
   }
 
 }
