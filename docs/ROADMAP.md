@@ -40,6 +40,16 @@ removing the shim is a no-op.
 Draft MR text, bug reports, repro evidence, and the patch are kept as local
 upstream working files outside the tracked doc set.
 
+**Related gap (not shimmed) — `prompts/get` does not validate required
+arguments.** Neither the SDK `GetPromptHandler` nor `mcp_server`
+`PromptConfigHandler` rejects a `prompts/get` that omits a required argument; the
+call returns 200 and the unsupplied `{{ token }}` is left literal in the rendered
+text. Our `PromptRenderSubscriber` cannot fix this cleanly: it runs on
+`ResponseEvent`, whose `setResponse()` only accepts a success `Response`, not an
+error, so it has no way to turn the call into a JSON-RPC error. Per the existing
+design decision, required-argument validation is the SDK's job; this is an
+upstream gap to raise alongside the prompt-render fixes, not a downstream fix.
+
 ## CI drift detection `[blocked]`
 
 Remainder of backlog item #5. Phase 1 (pinned commits, tested-versions matrix,
@@ -71,8 +81,16 @@ block this module.
   module either way. File the issue first for a maintainer signal on approach
   (core-wire vs. write-your-own).
 - **Clean stdio per-call auth denial (Contribution 2).** Over stdio a denied tool
-  call currently rethrows and aborts the server loop; the fix catches the
-  denial, emits the JSON-RPC error, and continues — matching HTTP's per-request
+  call crashes `drush mcp:server` outright: `McpServerCommands::server()` catches
+  `McpAuthorizationDeniedException`, then `fwrite(STDOUT, …)` throws
+  `TypeError: supplied resource is not a valid stream resource` (STDOUT is not a
+  valid resource in the Drush context), and even absent that it rethrows and
+  aborts the run loop. Net effect: the client receives no JSON-RPC error and the
+  session dies. This affects every downstream per-tool denial over stdio —
+  including this module's write-permission gating and tool-group gating (HTTP
+  handles the identical denial cleanly). Confirmed locally 2026-06-04. The fix:
+  in the stdio command, write the JSON-RPC error to the SDK's output stream (not
+  the `STDOUT` constant) and continue the loop, matching HTTP's per-request
   semantics. Small, self-contained; reproduce on a clean install first.
 - **Config-driven native-tool enablement.** Upstream "TODO (later)": a
   `mcp_server.tools` config object so native `#[Tool]` plugins are enabled via

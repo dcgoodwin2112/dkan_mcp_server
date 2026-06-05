@@ -7,6 +7,7 @@ namespace Drupal\Tests\dkan_mcp_server\Kernel;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\mcp_server\Plugin\ResourceTemplateProviderInterface;
+use Mcp\Exception\ResourceNotFoundException;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
@@ -19,7 +20,8 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
  * gates access on `access mcp server`. Happy-path content needs
  * harvested data, so it is covered by live HTTP verification, not here; this
  * test covers the deterministic well-formed-but-missing path (backing call
- * returns an error payload, so getResourceContent() yields NULL).
+ * returns an error payload, so getResourceContent() throws
+ * ResourceNotFoundException) and the unmatched-URI path (returns NULL).
  *
  * @group dkan_mcp_server
  */
@@ -84,20 +86,39 @@ class ResourceTemplateDiscoveryTest extends KernelTestBase {
   }
 
   /**
-   * A well-formed URI for a missing id resolves to NULL (not an error payload).
+   * A well-formed URI for a missing id throws ResourceNotFoundException.
    *
    * The backing dkan_query_tools call returns an ['error' => ...] array for an
-   * unknown id; the base must translate that to NULL so the server reports
-   * resource-not-found rather than serving the error as content. A URI matching
-   * no template also returns NULL.
+   * unknown id; the base must translate that to a ResourceNotFoundException so
+   * the SDK reports a clean resource-not-found, not the generic internal error
+   * that returning NULL would trigger via mcp_server's RuntimeException path.
    */
-  public function testMissingAndUnknownUrisReturnNull(): void {
+  public function testMissingIdThrowsResourceNotFound(): void {
     foreach (self::TEMPLATES as $id => [, $concreteUri]) {
       $plugin = $this->manager()->createInstance($id);
-      $this->assertNull(
-        $plugin->getResourceContent($concreteUri),
-        "Template '$id' must return NULL for a well-formed but missing id.",
-      );
+      try {
+        $plugin->getResourceContent($concreteUri);
+        $this->fail("Template '$id' must throw for a well-formed but missing id.");
+      }
+      catch (ResourceNotFoundException $e) {
+        $this->assertStringContainsString(
+          $concreteUri,
+          $e->getMessage(),
+          "Template '$id' not-found message should name the URI.",
+        );
+      }
+    }
+  }
+
+  /**
+   * A URI matching none of a provider's templates resolves to NULL.
+   *
+   * Distinct from a missing id: the provider has nothing to say about an
+   * unrelated URI, so it returns NULL rather than claiming not-found.
+   */
+  public function testUnmatchedUriReturnsNull(): void {
+    foreach (array_keys(self::TEMPLATES) as $id) {
+      $plugin = $this->manager()->createInstance($id);
       $this->assertNull(
         $plugin->getResourceContent('dkan://does-not-exist'),
         "Template '$id' must return NULL for a URI it does not match.",

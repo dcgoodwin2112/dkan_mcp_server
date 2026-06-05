@@ -14,6 +14,7 @@ use Drupal\dkan_metastore\Factory\MetastoreItemFactoryInterface;
 use Drupal\dkan_query_tools\Tool\MetastoreTools;
 use Drupal\mcp_server\Plugin\ResourceTemplateProviderBase;
 use Drupal\mcp_server\Resource\CacheableResourceContent;
+use Mcp\Exception\ResourceNotFoundException;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -26,9 +27,14 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * fetch(); the base handles URI matching, access, and content wrapping.
  *
  * Existence is enforced in getResourceContent(): a well-formed URI whose id
- * does not resolve (backing call returns NULL or an 'error' payload) yields
- * NULL, which the server surfaces as resource-not-found. checkAccess() gates on
- * URI shape + permission only, so it stays cheap and does not double-fetch.
+ * does not resolve (backing call returns NULL or an 'error' payload) throws
+ * ResourceNotFoundException, which the SDK surfaces as a clean
+ * resource-not-found error. Returning NULL instead would reach mcp_server's
+ * RuntimeException path and surface as a generic internal "Error while reading
+ * resource". A URI that
+ * matches none of this provider's templates returns NULL (not this provider's
+ * concern). checkAccess() gates on URI shape + permission only, so it stays
+ * cheap and does not double-fetch.
  */
 abstract class DkanResourceTemplateProviderBase extends ResourceTemplateProviderBase {
 
@@ -137,11 +143,14 @@ abstract class DkanResourceTemplateProviderBase extends ResourceTemplateProvider
   public function getResourceContent(string $uri): ?CacheableResourceContent {
     $match = $this->matchUri($uri);
     if ($match === NULL) {
+      // Not one of this provider's templates: nothing to say about this URI.
       return NULL;
     }
     $data = $this->fetch($match['name'], $match['id']);
     if ($data === NULL || isset($data['error'])) {
-      return NULL;
+      // Well-formed URI, but the id does not resolve: signal not-found so the
+      // SDK returns a clean resource-not-found rather than a generic error.
+      throw new ResourceNotFoundException($uri);
     }
     return $this->jsonContent($uri, $data, $this->dataCacheTags());
   }
