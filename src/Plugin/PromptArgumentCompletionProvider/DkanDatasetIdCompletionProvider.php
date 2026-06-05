@@ -21,7 +21,9 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * results. The identifier scan is bounded to the first page on purpose:
  * completion runs per keystroke, DKAN does not full-text index identifiers, and
  * dataset UUIDs are rarely typed from memory, so paging the whole catalog each
- * keystroke is not worth the cost. Delegates to dkan_query_tools (Decision D1).
+ * keystroke is not worth the cost. Identifier lookups use the metastore's
+ * identifier-only API, so no full dataset bodies are decoded per keystroke.
+ * Delegates to dkan_query_tools (Decision D1).
  */
 #[PromptArgumentCompletionProvider(
   id: 'dkan_dataset_id',
@@ -75,13 +77,13 @@ final class DkanDatasetIdCompletionProvider extends PromptArgumentCompletionProv
 
     try {
       if ($current === '') {
-        $ids = $this->identifiers($this->metastore->listDatasets(0, $limit), 'datasets');
+        $ids = $this->metastore->listDatasetIdentifiers(0, $limit)['identifiers'];
       }
       else {
         // Title/keyword matches (whole catalog) plus first-page identifier
         // substring matches; see the class doc for why the id scan is bounded.
         $ids = $this->identifiers($this->search->searchDatasets($current, 1, $limit), 'results');
-        foreach ($this->identifiers($this->metastore->listDatasets(0, $limit), 'datasets') as $id) {
+        foreach ($this->metastore->listDatasetIdentifiers(0, $limit)['identifiers'] as $id) {
           if (stripos($id, $current) !== FALSE) {
             $ids[] = $id;
           }
@@ -99,9 +101,9 @@ final class DkanDatasetIdCompletionProvider extends PromptArgumentCompletionProv
    * Extracts non-empty string identifiers from a tool result row list.
    *
    * @param array $result
-   *   A listDatasets/searchDatasets result payload.
+   *   A searchDatasets result payload.
    * @param string $key
-   *   The key holding the row list ('datasets' or 'results').
+   *   The key holding the row list ('results').
    *
    * @return string[]
    *   The identifiers, in order.

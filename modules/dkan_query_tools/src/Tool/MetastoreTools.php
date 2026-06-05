@@ -55,6 +55,29 @@ class MetastoreTools {
   }
 
   /**
+   * List dataset identifiers only, without loading full dataset bodies.
+   *
+   * Lighter than listDatasets() for callers that need just identifiers (e.g.
+   * the per-keystroke completion provider): getIdentifiers() skips the JSON
+   * decode and reference swap that getAll() performs per item. Returns DKAN
+   * node UUIDs — the canonical key get() resolves by, equal to the metadata
+   * identifier for datasets created normally.
+   *
+   * @param int $offset
+   *   Number of datasets to skip.
+   * @param int $limit
+   *   Max identifiers to return (1-100).
+   *
+   * @return array
+   *   ['identifiers' => string[]] in storage order.
+   */
+  public function listDatasetIdentifiers(int $offset = 0, int $limit = 25): array {
+    $limit = min(max($limit, 1), 100);
+    $offset = max($offset, 0);
+    return ['identifiers' => array_values($this->metastore->getIdentifiers('dataset', $offset, $limit))];
+  }
+
+  /**
    * Get full dataset metadata by UUID.
    *
    * @param string $identifier

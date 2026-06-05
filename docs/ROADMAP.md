@@ -158,9 +158,12 @@ validated and intentionally **not** fixed in Phase 1, with rationale.
 - **`get_site_status` version fingerprinting `[deferred]`.** Exposes DKAN/Drupal
   versions and enabled DKAN modules to readers — standard for an operator status
   tool. Coarsen or gate if the reader audience widens.
-- **`get_catalog` unpaginated full load `[deferred]`.** Loads the whole catalog
-  (descriptions already truncated). Acceptable at current sizes; add pagination or
-  a size guard if Phase 3 (perf) measures it as costly on a large catalog.
+- **`get_catalog` unpaginated full load `[addressed, Phase 3]`.** Loads the whole
+  catalog (descriptions already truncated). Phase 3 added a permanent
+  `node_list:data`-tagged cache, so repeated calls are a single cache read (see
+  ARCHITECTURE → Performance); the cold rebuild is still O(datasets). Add pagination
+  or a size guard only if the cold-load memory cost becomes an issue on a very large
+  catalog.
 - **Join group/sort/property canonicalization `[deferred]`.** `queryDatastoreJoin`
   relies on DKAN's `query.json` schema plus core's compile-time `escapeField`
   rather than the single-resource path's explicit canonicalization. Verified safe
@@ -194,6 +197,26 @@ validated and intentionally **not** fixed in Phase 1, with rationale.
   DKAN's harvester-construction internals (upstream-coupling risk) and is better
   served by an upstream redirect/IP-pinning fix in DKAN's extractor; tracked as a
   follow-up decision, not a blocker for the preflight hardening shipped here.
+
+## Phase 3 follow-ups — performance & integrity (2026-06)
+
+Surfaced by the Phase 3 perf review and its codex plan review; none block release.
+
+- **`get_site_status` bulk import-status query `[perf]`.** The status overview
+  gathers import status per dataset via `DatasetInfo::gather()` (~80 queries/dataset,
+  measured), bounded only by `MAX_DATASETS = 100` sampling, and is deliberately
+  uncached (the counts are its live signal — see ARCHITECTURE → Performance). The
+  real fix is a single bulk query over datastore import state to aggregate
+  done/pending/error without the per-dataset gather — cuts the cold cost without
+  trading away freshness. Deferred: couples to datastore-internal storage, so scope
+  it carefully or push upstream.
+- **`patch` identifier immutability `[integrity, deferred]`.** `MetastoreService::patch()`
+  — reached via `patch_dataset` / `patch_metastore_item` — does not reject a patch
+  that rewrites `$.identifier`, unlike `put()` (which throws
+  `CannotChangeUuidException`). A divergent patch desyncs the node uuid (the key
+  `get()` resolves by) from the metadata identifier. Low impact (the record is just
+  unfetchable by its new id) and requires write permission, but a guard mirroring
+  `put()` would close it. Surfaced by codex during the Phase 3 plan review.
 
 ## Decision D1 — revisit triggers
 

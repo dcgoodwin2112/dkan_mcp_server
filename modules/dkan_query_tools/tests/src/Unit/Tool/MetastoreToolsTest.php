@@ -93,6 +93,36 @@ class MetastoreToolsTest extends TestCase {
   }
 
   /**
+   * Lists dataset identifiers via the lighter identifier-only metastore call.
+   */
+  public function testListDatasetIdentifiers(): void {
+    $metastore = $this->createMock(MetastoreService::class);
+    $metastore->expects($this->once())
+      ->method('getIdentifiers')
+      ->with('dataset', 0, 25)
+      ->willReturn(['uuid-a', 'uuid-b']);
+
+    $tools = $this->createTools($metastore);
+
+    $this->assertSame(['identifiers' => ['uuid-a', 'uuid-b']], $tools->listDatasetIdentifiers(0, 25));
+  }
+
+  /**
+   * Clamps an oversized identifier limit to the maximum of 100.
+   */
+  public function testListDatasetIdentifiersClampsLimit(): void {
+    $metastore = $this->createMock(MetastoreService::class);
+    $metastore->expects($this->once())
+      ->method('getIdentifiers')
+      ->with('dataset', 0, 100)
+      ->willReturn([]);
+
+    $tools = $this->createTools($metastore);
+
+    $this->assertSame(['identifiers' => []], $tools->listDatasetIdentifiers(0, 999));
+  }
+
+  /**
    * Returns a dataset and strips internal %Ref and %-prefixed keys.
    */
   public function testGetDataset(): void {

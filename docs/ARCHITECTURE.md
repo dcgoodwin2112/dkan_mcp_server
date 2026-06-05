@@ -230,6 +230,36 @@ idempotent and non-clobbering:
 | `update_10005` | the `dataset_id` completion provider on existing prompts |
 | `update_10006` | `disabled_groups` setting at its default (empty) |
 
+## Performance
+
+Reads are dominated by DKAN node loading: a dataset summary loads its `data`
+node, and `MetastoreService::getAll()` additionally decodes the body and swaps
+references (tens of queries per dataset, measured). Costs are bounded as follows.
+
+- **Row/page caps everywhere.** Datastore reads cap at 500 rows; metastore
+  listings clamp to ≤100/page; search to ≤50. No tool runs an unbounded row scan.
+- **`get_catalog` — permanent cache.** The whole-catalog read is O(datasets)
+  (hundreds of queries cold). The tool caches its shaped payload permanently in
+  `cache.default`, busted by `node_list:data` — the same metastore list tag the
+  `dkan://catalog` resource uses, invalidated by any dataset
+  create/update/delete/publish/unpublish (kernel-tested). Warm calls are one cache
+  read (~hundreds of queries → 1). The payload is access-independent (access is
+  gated before `execute()`), so one shared key needs no per-user variation. A cold
+  rebuild happens only right after a dataset write, so concurrent-miss stampede is
+  bounded — a single-site server needs no lock.
+- **Completion — identifier-only.** `dataset_id` completion fires per keystroke
+  but needs only identifiers, so it uses `MetastoreTools::listDatasetIdentifiers()`
+  (`getIdentifiers()`: no body decode, no reference swap) rather than full
+  summaries — ~20% fewer queries and ~2× faster per keystroke at measurement, and
+  no per-keystroke decode of full dataset bodies at scale. Both result sets are
+  page-capped.
+- **`get_site_status` — live, sampled, uncached.** Gathers per-dataset import
+  status via `DatasetInfo::gather()` (~80 queries/dataset), bounded by sampling the
+  first `MAX_DATASETS = 100` datasets. Intentionally **not** cached: import/queue
+  progress is the live signal this tool reports, and a TTL cache would show stale
+  counts during imports while `node_list:data` cannot invalidate importer-state
+  changes. A bulk import-status query to cut the cold cost is a ROADMAP follow-up.
+
 ## Testing
 
 Three suites — unit (standalone bootstrap), the bundled `dkan_query_tools` unit
