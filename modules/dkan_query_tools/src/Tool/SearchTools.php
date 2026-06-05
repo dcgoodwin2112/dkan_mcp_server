@@ -8,6 +8,8 @@ namespace Drupal\dkan_query_tools\Tool;
 class SearchTools {
 
   /**
+   * Constructs a SearchTools instance.
+   *
    * @param \Closure $searchFactory
    *   Lazy factory returning the dkan.metastore_search.service. Injected as a
    *   service closure so the search service (which loads the 'dkan' search
@@ -22,10 +24,11 @@ class SearchTools {
    * Search datasets by keyword via the DKAN search service.
    *
    * Calls the metastore search service in-process rather than issuing an HTTP
-   * request to the site's own /api/1/search endpoint. The in-process call avoids
-   * a self-directed round trip and, critically, never derives an outbound URL
-   * from the request Host header (which would be a request-controlled SSRF
-   * vector when trusted_host_patterns is unset or permissive).
+   * request to the site's own /api/1/search endpoint. The in-process call
+   * avoids a self-directed round trip and, critically, never derives an
+   * outbound URL from the request Host header (which would be a
+   * request-controlled SSRF vector when trusted_host_patterns is unset or
+   * permissive).
    *
    * @param string $keyword
    *   Search term.

@@ -10,7 +10,18 @@ namespace Drupal\dkan_datastore\Service;
  */
 class DatastoreQuery {
 
+  /**
+   * The raw query JSON.
+   *
+   * @var string
+   */
   protected string $json;
+
+  /**
+   * The maximum number of rows to return.
+   *
+   * @var mixed
+   */
   protected $rowsLimit;
 
   public function __construct(string $json, $rows_limit = NULL) {
@@ -18,6 +29,9 @@ class DatastoreQuery {
     $this->rowsLimit = $rows_limit;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function __toString(): string {
     return $this->json;
   }

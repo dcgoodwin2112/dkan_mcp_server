@@ -7,6 +7,9 @@ namespace Drupal\dkan_common;
  */
 class DatasetInfo {
 
+  /**
+   * {@inheritdoc}
+   */
   public function gather(string $uuid): array {
     return [];
   }

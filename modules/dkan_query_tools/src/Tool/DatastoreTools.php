@@ -278,10 +278,10 @@ class DatastoreTools {
       }
       $tableName = $storage->getTableName();
 
-      // Fetch limit+1 to detect truncation. Exclude NULLs in SQL (empty strings
-      // are kept — they are real distinct values) so the truncation flag and the
-      // returned value count are computed over the same non-null set rather than
-      // diverging when a NULL occupies the +1 boundary row.
+      // Fetch limit+1 to detect truncation. Exclude NULLs in SQL (empty
+      // strings are kept — they are real distinct values) so the truncation
+      // flag and the returned value count are computed over the same non-null
+      // set rather than diverging when a NULL occupies the +1 boundary row.
       $query = $this->database->select($tableName, 't');
       $query->addField('t', $column, 'value');
       $query->distinct();
