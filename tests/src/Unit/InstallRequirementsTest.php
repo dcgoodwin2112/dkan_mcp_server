@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Drupal\Tests\dkan_mcp_server\Unit;
 
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -12,7 +13,10 @@ use PHPUnit\Framework\TestCase;
  * Loads the procedural .install and exercises the extracted, container-free
  * severity helper: HTTP Basic auth on the MCP endpoint must raise a warning on
  * the status report, regardless of whether an OAuth provider is also present.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class InstallRequirementsTest extends TestCase {
 
   /**

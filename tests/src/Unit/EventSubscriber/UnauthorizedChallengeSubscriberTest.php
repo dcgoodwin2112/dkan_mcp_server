@@ -10,6 +10,7 @@ use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\Routing\UrlGeneratorInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\dkan_mcp_server\EventSubscriber\UnauthorizedChallengeSubscriber;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,7 +20,10 @@ use Symfony\Component\HttpKernel\KernelEvents;
 
 /**
  * Unit tests for the RFC 9728 unauthenticated MCP challenge.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class UnauthorizedChallengeSubscriberTest extends TestCase {
 
   /**

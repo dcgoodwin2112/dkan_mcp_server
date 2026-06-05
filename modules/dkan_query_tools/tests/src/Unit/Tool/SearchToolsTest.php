@@ -4,11 +4,15 @@ namespace Drupal\Tests\dkan_query_tools\Unit\Tool;
 
 use Drupal\dkan_metastore_search\Search;
 use Drupal\dkan_query_tools\Tool\SearchTools;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Tests the SearchTools dataset search adapter.
+ *
+ * @group dkan_query_tools
  */
+#[Group('dkan_query_tools')]
 class SearchToolsTest extends TestCase {
 
   /**

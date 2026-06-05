@@ -11,6 +11,7 @@ use Drupal\dkan_metastore\MetastoreService;
 use Drupal\dkan_metastore\ResourceMapper;
 use Drupal\dkan_mcp_server\Tools\ResourceTools;
 use Drupal\dkan_query_tools\Tool\DatastoreTools;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -20,7 +21,10 @@ use PHPUnit\Framework\TestCase;
  * returned each perspective's raw getFilePath(). For the local_file perspective
  * that is an absolute on-disk path that leaks the server layout, so the tool
  * now reduces absolute paths to a basename while leaving public URLs intact.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class ResourceToolsTest extends TestCase {
 
   /**

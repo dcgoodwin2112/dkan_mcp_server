@@ -50,17 +50,42 @@ error, so it has no way to turn the call into a JSON-RPC error. Per the existing
 design decision, required-argument validation is the SDK's job; this is an
 upstream gap to raise alongside the prompt-render fixes, not a downstream fix.
 
-## CI drift detection `[blocked]`
+## CI drift detection `[external]`
 
 Remainder of backlog item #5. Phase 1 (pinned commits, tested-versions matrix,
-`UpstreamContractTest`) shipped. Outstanding:
+`UpstreamContractTest`) and the **bump-and-test CI job** (Phase 2.3) are shipped:
+`.gitlab-ci.yml` defines a scheduled/manual `drift (upstream HEAD)` job that
+re-points `mcp_server` / `mcp/sdk` to branch HEAD and runs `ToolDiscoveryTest` +
+`UpstreamContractTest` (see README → Continuous integration). Outstanding:
 
-- **Bump-and-test CI job** (Phase 2.3) — periodically update the pins and run the
-  suite to catch upstream drift early.
 - **Release tracking** (Phase 3) — watch for `mcp_server` / `mcp/sdk` stable
   tags to move off dev branches.
 
-Blocked on standing up CI for the standalone module repo.
+### drupal.org CI cutover checklist
+
+The pipeline is authored against the drupal.org contrib templates but only runs
+once the project lives on drupal.org GitLab. The items below could not be
+validated off drupal.org (no GitLab runner, no `glab` CI lint here); verify each
+on the first pipeline run and adjust `.gitlab-ci.yml`:
+
+1. **Template job paths.** The `phpunit (dkan_query_tools)` and
+   `drift (upstream HEAD)` jobs reference template internals that only resolve on
+   a drupal.org runner: `$DRUPAL_PROJECT_FOLDER` and `$COMPOSER_BIN_DIR` (the
+   submodule `-c` path + the phpunit binary) and `!reference [phpunit, script]`
+   (drift reuses the template's phpunit command). Confirm each resolves against
+   the pinned `$_GITLAB_TEMPLATES_REF` and that both jobs run green; the variable
+   names can change between template versions.
+2. **Drift schedule.** The drift job's `schedule` rule needs an actual GitLab CI
+   **pipeline schedule** (project Settings → CI/CD → Schedules), e.g. weekly.
+   Until one exists it only fires on a manual web trigger.
+3. **cspell dictionary.** `_CSPELL_WORDS` is a starter list; top it up from the
+   first cspell job output (or set `SKIP_CSPELL: '1'` if not wanted).
+4. **Core matrix.** `OPT_IN_TEST_NEXT_MINOR` / `_NEXT_MAJOR` are off (DKAN 4.x is
+   `^10.2 || ^11`); enable next-minor once the baseline is green.
+5. **PHPUnit 9 / Drupal 10.2.** If `CORE_PREVIOUS` testing is ever enabled, group
+   selection on PHPUnit 9 relies on the `@group` docblocks (PHPUnit 9 ignores the
+   `#[Group]` attribute). Keep both the docblock and the attribute on every test
+   while `^10.2` is supported.
 
 ## Structured output schemas (#7b) `[optional]`
 

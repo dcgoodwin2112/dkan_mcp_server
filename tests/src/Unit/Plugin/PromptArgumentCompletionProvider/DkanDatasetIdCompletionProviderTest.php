@@ -7,6 +7,7 @@ namespace Drupal\Tests\dkan_mcp_server\Unit\Plugin\PromptArgumentCompletionProvi
 use Drupal\dkan_mcp_server\Plugin\PromptArgumentCompletionProvider\DkanDatasetIdCompletionProvider;
 use Drupal\dkan_query_tools\Tool\MetastoreTools;
 use Drupal\dkan_query_tools\Tool\SearchTools;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -16,7 +17,10 @@ use PHPUnit\Framework\TestCase;
  * identifiers, partial input matches by search and by identifier substring,
  * results are deduped and capped, and backing-service failures yield no
  * suggestions rather than an error.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class DkanDatasetIdCompletionProviderTest extends TestCase {
 
   /**

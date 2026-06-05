@@ -8,6 +8,7 @@ use Drupal\dkan_harvest\Entity\HarvestRunRepository;
 use Drupal\dkan_harvest\HarvestService;
 use Drupal\dkan_mcp_server\Tools\HarvestTools;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
@@ -19,7 +20,10 @@ use Psr\Log\NullLogger;
  * HarvestService::getAllHarvestRunInfo(), which does not exist and threw at
  * runtime; mocking the real class makes that class of mistake impossible to
  * fake in a test.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class HarvestToolsTest extends TestCase {
 
   /**

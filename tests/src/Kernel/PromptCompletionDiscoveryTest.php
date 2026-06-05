@@ -6,6 +6,7 @@ namespace Drupal\Tests\dkan_mcp_server\Kernel;
 
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\mcp_server\Plugin\PromptArgumentCompletionProviderInterface;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
@@ -20,6 +21,7 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
  *
  * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 #[RunTestsInSeparateProcesses]
 class PromptCompletionDiscoveryTest extends KernelTestBase {
 

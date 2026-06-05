@@ -25,6 +25,7 @@ use Mcp\Schema\Request\ListToolsRequest;
 use Mcp\Schema\Result\ListToolsResult;
 use Mcp\Schema\Tool;
 use Mcp\Server\Session\SessionInterface;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -33,7 +34,10 @@ use PHPUnit\Framework\TestCase;
  * Verifies that ToolAccessSubscriber activates each plugin's checkToolAccess()
  * over both MCP gates: tools/call (deny) and tools/list (hide), with the
  * documented deferral for tool names that do not resolve to a tool plugin.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class ToolAccessSubscriberTest extends TestCase {
 
   /**

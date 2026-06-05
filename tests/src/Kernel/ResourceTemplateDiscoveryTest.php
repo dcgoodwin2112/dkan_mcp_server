@@ -8,6 +8,7 @@ use Drupal\Core\Session\AccountInterface;
 use Drupal\KernelTests\KernelTestBase;
 use Drupal\mcp_server\Plugin\ResourceTemplateProviderInterface;
 use Mcp\Exception\ResourceNotFoundException;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 
 /**
@@ -25,6 +26,7 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
  *
  * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 #[RunTestsInSeparateProcesses]
 class ResourceTemplateDiscoveryTest extends KernelTestBase {
 

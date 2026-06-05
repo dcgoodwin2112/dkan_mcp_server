@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\Tests\dkan_mcp_server\Unit;
 
 use Drupal\dkan_mcp_server\OAuth\DkanMcpScopes;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Yaml\Yaml;
 
@@ -18,7 +19,10 @@ use Symfony\Component\Yaml\Yaml;
  * account → effective-permission leg is simple_oauth's and is verified
  * separately in an environment with simple_oauth installed (see OAUTH_PLAN.md
  * Phase 3).
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class OAuthScopeConfigTest extends TestCase {
 
   /**

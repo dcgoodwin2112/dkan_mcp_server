@@ -7,6 +7,7 @@ namespace Drupal\Tests\dkan_mcp_server\Unit\Tools;
 use Drupal\dkan_datastore\DatastoreService;
 use Drupal\dkan_metastore\MetastoreService;
 use Drupal\dkan_mcp_server\Tools\WriteTools;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 
@@ -18,7 +19,10 @@ use Psr\Log\NullLogger;
  * mcp" could create, patch, or delete datasets through the generic metastore
  * tools, bypassing that model. The guard is enforced at the service layer, so
  * the metastore service must never be touched for schemaId "dataset".
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class WriteToolsDatasetGuardTest extends TestCase {
 
   /**

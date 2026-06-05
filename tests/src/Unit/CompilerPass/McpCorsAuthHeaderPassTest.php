@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Drupal\Tests\dkan_mcp_server\Unit\CompilerPass;
 
 use Drupal\dkan_mcp_server\CompilerPass\McpCorsAuthHeaderPass;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
@@ -13,7 +14,10 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
  *
  * Verifies the pass adds 'authorization' (OAuth) and exposes 'mcp-session-id'
  * only when core CORS is enabled, and is otherwise a no-op.
+ *
+ * @group dkan_mcp_server
  */
+#[Group('dkan_mcp_server')]
 final class McpCorsAuthHeaderPassTest extends TestCase {
 
   /**
