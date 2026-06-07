@@ -49,9 +49,8 @@ ddev exec bash -c 'cd docroot && SIMPLETEST_DB="mysql://db:db@${DDEV_PROJECT}-db
   ../vendor/bin/phpunit -c core/phpunit.xml.dist \
   modules/custom/dkan_mcp_server/tests/src/Kernel/'
 
-# Lint (no module-level phpcs.xml, so pass the standard + the extensions in use)
-ddev exec 'cd /var/www/html && vendor/bin/phpcs docroot/modules/custom/dkan_mcp_server/ \
-  --standard=Drupal,DrupalPractice --extensions=php,install,yml'
+# Lint (uses the module's phpcs.xml.dist: standard, extensions, and excludes)
+ddev exec "cd docroot/modules/custom/dkan_mcp_server && ../../../../vendor/bin/phpcs"
 ```
 
 - Unit tests are wired in `phpunit.xml` (suite `unit` → `tests/src/Unit`,
@@ -149,6 +148,10 @@ modules/dkan_query_tools/            bundled shared query library (own README)
 - Run `phpcs` + the relevant test suite before opening a PR; pass non-trivial
   changes through the codex reviewer and integrate validated feedback (decline
   em-dash nits).
+- A local **commit-gate hook** (shipped by the `drupal-dkan-ai` plugin) runs
+  phpcs + the unit suite via DDEV before each `git commit` and blocks on failure;
+  bypass an intentional WIP commit with `CLAUDE_SKIP_COMMIT_GATE=1`. CI is
+  authoritative.
 - Commit messages: concise, no hype; trailer
   `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`. PR bodies end with
   the Claude Code generated-with line.
