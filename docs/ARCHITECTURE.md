@@ -197,8 +197,9 @@ README → CORS.
 
 ## Dependency stability
 
-The stack rides moving dev branches, so `composer.json` pins both to tested
-commits. `UpstreamContractTest` asserts the consumed upstream symbols exist
+The stack rides moving dev branches (`drupal/dkan`, `drupal/mcp_server`), so
+`composer.json` pins `mcp_server` to a tested commit; `mcp/sdk` is required at the
+stable `^0.6`. `UpstreamContractTest` asserts the consumed upstream symbols exist
 (clear failure on drift); the kernel `ToolDiscoveryTest` instantiates every tool
 via DI against the real upstream plugins, so most API drift surfaces there.
 `UpstreamContractTest::testPromptRenderShimStillNeeded` asserts the two

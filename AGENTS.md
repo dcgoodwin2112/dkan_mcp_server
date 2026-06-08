@@ -120,11 +120,13 @@ modules/dkan_query_tools/            bundled shared query library (own README)
 
 ## Gotchas
 
-- **Pinned dev dependencies.** `composer.json` pins `drupal/mcp_server` and
-  `mcp/sdk` to exact commits (both ride dev branches). After bumping the
-  `#<sha>` pins, run the kernel `ToolDiscoveryTest` (instantiates every tool via
-  DI against the real upstream) and `UpstreamContractTest` (asserts the consumed
-  upstream symbols still exist). See README → Tested versions.
+- **Pinned dev dependencies.** `composer.json` pins `drupal/mcp_server` to an
+  exact commit (it rides `2.x-dev`); `mcp/sdk` is required at the stable `^0.6`.
+  `minimum-stability: dev` (for `mcp_server` + `drupal/dkan`) keeps a fresh
+  resolve working. After bumping the `mcp_server` `#<sha>` pin, run the kernel
+  `ToolDiscoveryTest` (instantiates every tool via DI against the real upstream)
+  and `UpstreamContractTest` (asserts the consumed upstream symbols still exist).
+  See README → Tested versions.
 - **Two temporary downstream shims** wait on upstream fixes (see ROADMAP):
   - `PromptRenderSubscriber` — works around two `prompts/get` render defects.
     Remove it (+ service + tests) when both land and the pins bump;
