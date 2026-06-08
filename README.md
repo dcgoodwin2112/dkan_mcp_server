@@ -42,6 +42,9 @@ blocked work is in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 Tested matrix: Drupal core `^10.2 || ^11`, PHP 8.3.
 
+Because both upstreams are pre-release, drupal.org releases of this module are
+published as **experimental** (alpha) until those cut stable tags.
+
 **To bump:** update the `#<sha>` pins in `composer.json`, run `composer update
 drupal/mcp_server mcp/sdk`, then the kernel `ToolDiscoveryTest` — it instantiates
 all tools via DI against the real upstream plugins, so most API drift surfaces
@@ -50,28 +53,33 @@ there. The consumed upstream surface and drift guards are described in
 
 ## Installation
 
-A `drupal-custom-module` Composer package. Drupal enforces the module
-dependencies above from `dkan_mcp_server.info.yml` at enable time, so they must
-be present first.
+A `drupal-module` Composer package on
+[drupal.org](https://www.drupal.org/project/dkan_mcp_server). Drupal enforces the
+module dependencies above from `dkan_mcp_server.info.yml` at enable time, so they
+must be present first.
 
-**Composer** (not on Packagist — add this repo as a VCS source):
+**Composer:**
 
 ```bash
-composer config repositories.dkan_mcp_server vcs https://github.com/dcgoodwin2112/dkan_mcp_server
-composer require dcgoodwin2112/dkan_mcp_server
+composer require drupal/dkan_mcp_server
 drush en dkan_mcp_server
 ```
 
-`composer/installers` places it under `modules/custom/`. The package `require`s
-`drupal/dkan` and `drupal/mcp_server` (which brings `mcp/sdk`); on a DKAN site
-these are already present. `dkan_query_tools` ships **inside** this package as a
-submodule — no separate install.
+`composer/installers` places it under `modules/contrib/`. The package `require`s
+`drupal/dkan` and `drupal/mcp_server` (which brings `mcp/sdk` from Packagist); on
+a DKAN site these are already present. `dkan_query_tools` ships **inside** this
+package as a submodule — no separate install.
 
-**Manual:** clone into `modules/custom/` and enable:
+Both `drupal/mcp_server` and `mcp/sdk` ride dev branches (see [Tested
+versions](#tested-versions)), so the consuming site needs `minimum-stability: dev`
++ `prefer-stable: true` — the `getdkan/recommended-project` and
+`drupal/recommended-project` templates already set this.
+
+**Manual:** clone into `modules/contrib/` and enable:
 
 ```bash
-git clone https://github.com/dcgoodwin2112/dkan_mcp_server \
-  docroot/modules/custom/dkan_mcp_server
+git clone https://git.drupalcode.org/project/dkan_mcp_server.git \
+  docroot/modules/contrib/dkan_mcp_server
 drush en dkan_mcp_server
 ```
 
@@ -83,8 +91,9 @@ independently-enable-able Drupal module (own machine name, `Drupal\dkan_query_to
 namespace, and `dkan_query_tools.*` service IDs). It does **not** depend on its
 parent, so `drush en dkan_query_tools` enables the library alone without pulling
 in the MCP server. `drush en dkan_mcp_server` pulls it in as a declared
-dependency. Other consumers (e.g. `dkan_drupal_ai_query`) require this package to
-get the library; see their READMEs for the downstream `repositories` snippet.
+dependency. Other consumers (e.g. `dkan_drupal_ai_query`) `composer require
+drupal/dkan_mcp_server` to get the library — no VCS `repositories` snippet needed
+now that it ships on drupal.org.
 
 ## Transports
 

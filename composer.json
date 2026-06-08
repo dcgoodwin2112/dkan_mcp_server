@@ -1,7 +1,7 @@
 {
-  "name": "dcgoodwin2112/dkan_mcp_server",
+  "name": "drupal/dkan_mcp_server",
   "description": "Exposes DKAN tools through the contrib mcp_server base, with per-tool Drupal-permission access control. Bundles the shared dkan_query_tools library as a submodule.",
-  "type": "drupal-custom-module",
+  "type": "drupal-module",
   "license": "GPL-2.0-or-later",
   "require": {
     "php": ">=8.3",

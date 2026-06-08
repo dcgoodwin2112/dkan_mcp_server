@@ -13,13 +13,15 @@ operations as MCP tools/resources/prompts, built on contrib `mcp_server` +
 
 ## Repository
 
-- **This module is its own git repo** (`git@github.com:dcgoodwin2112/dkan_mcp_server.git`).
-  It is normally developed *inside* a DKAN site at
-  `docroot/modules/custom/dkan_mcp_server/`, but ships standalone — keep it
-  self-contained (no references to the parent site's files or config).
+- **This module is its own git repo** on drupal.org
+  (`https://git.drupalcode.org/project/dkan_mcp_server.git`). It is normally
+  developed *inside* a DKAN site at `docroot/modules/custom/dkan_mcp_server/`,
+  but ships standalone — keep it self-contained (no references to the parent
+  site's files or config).
 - The bundled submodule `modules/dkan_query_tools/` is a separate, independently
   enable-able Drupal module shipped in this same package (not a separate repo).
-- `composer.json`: `type: drupal-custom-module`, GPL-2.0-or-later, `php >= 8.3`.
+- `composer.json`: `type: drupal-module` (installs to `modules/contrib/`),
+  GPL-2.0-or-later, `php >= 8.3`.
 
 ## Dev environment
 

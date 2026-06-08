@@ -220,7 +220,8 @@ both this module and `dkan_drupal_ai_query`. Query methods return structured
 [submodule README](../modules/dkan_query_tools/README.md).
 
 It has no own `composer.json`, so the whole tree packages as a single project —
-one drupal.org release / Composer package. (Drupal's packaging adds
+one drupal.org release / Composer package (`drupal/dkan_mcp_server`, a
+`drupal-module` installed to `modules/contrib/`). (Drupal's packaging adds
 `version`/`LICENSE.txt`/datestamp at release time; they are not committed here.)
 
 ## Update hooks
