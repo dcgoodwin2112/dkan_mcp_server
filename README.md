@@ -1,5 +1,11 @@
 # DKAN MCP Server
 
+> [!IMPORTANT]
+> **This project has moved to [drupal.org](https://www.drupal.org/project/dkan_mcp_server).**
+> Development, releases, and the issue queue are there now — code at
+> <https://git.drupalcode.org/project/dkan_mcp_server>. This GitHub repository is
+> an archived snapshot and is no longer maintained.
+
 Exposes DKAN's catalog, datastore, harvest, and write operations as Model
 Context Protocol (MCP) tools, built on the contrib
 [`mcp_server`](https://www.drupal.org/project/mcp_server) module.
