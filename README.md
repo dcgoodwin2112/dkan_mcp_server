@@ -17,9 +17,8 @@ blocked work is in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Requirements
 
-- `drupal/mcp_server` and `mcp/sdk` (both ride dev branches; pinned to tested
-  commits in `require` — see [Tested versions](#tested-versions)) and
-  `drupal/dkan` (`4.x-dev`).
+- `drupal/mcp_server` (`2.x-dev`, pinned to a tested commit — see [Tested
+  versions](#tested-versions)), `mcp/sdk` (`^0.6`), and `drupal/dkan` (`4.x-dev`).
 - DKAN `dkan_metastore`, `dkan_datastore`, `dkan_harvest`, and `dkan_query_tools`
   (the last ships bundled — see [Bundled `dkan_query_tools`](#bundled-dkan_query_tools)).
 - OAuth HTTP clients also need `drupal/simple_oauth:^6` and
@@ -32,23 +31,25 @@ blocked work is in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ### Tested versions
 
-`mcp_server` (`2.x-dev`) and `mcp/sdk` (`dev-main`) are moving targets, so
-`require` pins them to specific commits this module is verified against:
+`mcp_server` (`2.x-dev`) is a moving target, so `require` pins it to a specific
+commit this module is verified against. `mcp/sdk` now has a stable line and is
+required at `^0.6` (the constraint `mcp_server` itself declares):
 
-| Package | Branch | Pinned commit |
+| Package | Constraint | Pinned commit |
 |---|---|---|
 | `drupal/mcp_server` | `2.x-dev` | `5d6b54c6f2f29574248c56c768968438eac3be6c` |
-| `mcp/sdk` | `dev-main` | `0347dc85b4e577037f2fa177ac3fccd6aca7d8d7` |
+| `mcp/sdk` | `^0.6` | stable; resolved by Composer |
 
 Tested matrix: Drupal core `^10.2 || ^11`, PHP 8.3.
 
-Because both upstreams are pre-release, drupal.org releases of this module are
-published as **experimental** (alpha) until those cut stable tags.
+`mcp_server` and `drupal/dkan` are still pre-release, so drupal.org releases of
+this module are published as **experimental** (alpha) until those cut stable tags.
 
-**To bump:** update the `#<sha>` pins in `composer.json`, run `composer update
-drupal/mcp_server mcp/sdk`, then the kernel `ToolDiscoveryTest` — it instantiates
-all tools via DI against the real upstream plugins, so most API drift surfaces
-there. The consumed upstream surface and drift guards are described in
+**To bump:** update the `mcp_server` `#<sha>` pin (and the `mcp/sdk` constraint if
+upstream moves) in `composer.json`, run `composer update drupal/mcp_server
+mcp/sdk`, then the kernel `ToolDiscoveryTest` — it instantiates all tools via DI
+against the real upstream plugins, so most API drift surfaces there. The consumed
+upstream surface and drift guards are described in
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (Dependency stability).
 
 ## Installation
@@ -70,7 +71,7 @@ drush en dkan_mcp_server
 a DKAN site these are already present. `dkan_query_tools` ships **inside** this
 package as a submodule — no separate install.
 
-Both `drupal/mcp_server` and `mcp/sdk` ride dev branches (see [Tested
+`drupal/mcp_server` and `drupal/dkan` ride dev branches (see [Tested
 versions](#tested-versions)), so the consuming site needs `minimum-stability: dev`
 + `prefer-stable: true` — the `getdkan/recommended-project` and
 `drupal/recommended-project` templates already set this.
