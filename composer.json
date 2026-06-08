@@ -38,7 +38,7 @@
   },
   "config": {
     "allow-plugins": {
-      "drupal/core-composer-scaffold": false
+      "drupal/core-composer-scaffold": true
     }
   }
 }
