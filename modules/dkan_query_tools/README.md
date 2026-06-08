@@ -23,7 +23,7 @@ Provides three Drupal services that wrap DKAN's metastore, datastore, and search
 
 ## Installation
 
-This module ships **bundled** inside the `dcgoodwin2112/dkan_mcp_server`
+This module ships **bundled** inside the `drupal/dkan_mcp_server`
 Composer package at `modules/dkan_query_tools/`. There is no separate Composer
 package — install `dkan_mcp_server` (see its
 [README](../../README.md)) and this submodule lands on disk with it.
