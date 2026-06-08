@@ -39,7 +39,7 @@ variables:
   _PHPUNIT_TESTGROUPS: 'dkan_mcp_server'
   # Spell-check dictionary for the cspell job (domain + dependency jargon).
   # Extend on the first real pipeline run if cspell surfaces more terms.
-  _CSPELL_WORDS: 'dkan, metastore, datastore, mcp, sdk, ssrf, cgnat, gethostbynamel, ip2long, rawurldecode, opis, pkce, jsonrpc, deregister, mcp_server, dkan_mcp_server, dkan_query_tools, phpstan, phpcbf, mglaman, ddev, drush, allowlist, subqueries, canonicalization'
+  _CSPELL_WORDS: 'dkan, metastore, datastore, mcp, sdk, ssrf, cgnat, gethostbynamel, ip2long, rawurldecode, opis, pkce, jsonrpc, deregister, mcp_server, dkan_mcp_server, dkan_query_tools, phpstan, phpcbf, mglaman, ddev, drush, allowlist, subqueries, canonicalization, advertisable, artefacts, creds, cset, cutover, dcat, desyncs, docblocks, footguns, getdkan, glab, headeronly, permissioned, resaves, safelisted, tableschema, unfetchable, unparseable, unsupplied, unvalidated, upstreaming'
   # DKAN 4.x targets Drupal 10.2 / 11 only (see info.yml core_version_requirement);
   # next-minor / next-major core opt-ins are left off until the baseline pipeline
   # is green on drupal.org. Enable OPT_IN_TEST_NEXT_MINOR once verified there.
