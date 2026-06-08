@@ -13,6 +13,7 @@
   },
   "require-dev": {
     "drupal/core": "^10.2 || ^11",
+    "drupal/simple_oauth": "^6",
     "phpunit/phpunit": "^10 || ^11",
     "getdkan/mock-chain": "^1"
   },
